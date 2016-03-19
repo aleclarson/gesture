@@ -1,72 +1,145 @@
 
-LazyVar = require "lazy-var"
+{ currentCentroidX
+  currentCentroidY } = require "TouchHistoryMath"
+
+{ touchHistory } = require "ResponderTouchHistoryStore"
+{ assert } = require "type-utils"
+
+ResponderSyntheticEvent = require "ResponderSyntheticEvent"
 Factory = require "factory"
 
 module.exports = Factory "Gesture",
 
+  mixins: [
+    require "./GestureMath"
+  ]
+
   statics:
 
-    Responder: LazyVar ->
+    Responder: lazy: ->
       require "./Responder"
 
-    Combinator: LazyVar ->
-      require "./Combinator"
+    ResponderList: lazy: ->
+      require "./ResponderList"
 
   optionTypes:
-    gesture: Object
+    event: [ ResponderSyntheticEvent ]
 
   customValues:
 
     isTouching: get: ->
-      @_touching
+      @finished is null
 
-    finished: get: ->
-      @_finished
+    needsUpdate: get: ->
+      @_currentEvent < touchHistory.mostRecentTimeStamp
 
     x0: get: ->
-      @_gesture.x0
+      @_x0
 
     y0: get: ->
-      @_gesture.y0
-
-    x: get: ->
-      @_gesture.moveX
-
-    y: get: ->
-      @_gesture.moveY
-
-    dx: get: ->
-      @_gesture.dx
-
-    dy: get: ->
-      @_gesture.dy
-
-    vx: get: ->
-      @_gesture.vx
-
-    vy: get: ->
-      @_gesture.vy
-
-  initFrozenValues: (options) ->
-
-    _gesture: options.gesture
+      @_y0
 
   initValues: ->
 
-    _finished: null
+    _x0: null
+
+    _y0: null
+
+    _prevX: null
+
+    _prevY: null
+
+    _lastMoveTime: null
+
+    _currentEvent: 0
+
+    _prevEvent: null
 
   initReactiveValues: ->
 
-    _touching: no
+    touchCount: touchHistory.numberActiveTouches
 
-  _onTouchStart: ->
-    @_touching = yes
-    return
+    finished: null
 
-  _onTouchMove: ->
-    # no-op
+  init: (options) ->
+    { nativeEvent } = options.event
+    @_x = @_prevX = @_x0 = nativeEvent.pageX
+    @_y = @_prevY = @_y0 = nativeEvent.pageY
+    @_dx.set 0
+    @_dy.set 0
+    @_dt.set 0
+    @_vx.set 0
+    @_vy.set 0
 
-  _onTouchEnd: (finished) ->
-    @_finished = finished
-    @_touching = no
-    return
+  _updateEvent: ->
+    assert @needsUpdate
+    @_prevEvent = @_currentEvent
+    @_currentEvent = touchHistory.mostRecentTimeStamp
+
+  _computeFinalVelocity: ->
+    return unless @_lastMoveTime
+    return if Date.now() - @_lastMoveTime < 150
+    @_vx.set 0
+    @_vy.set 0
+
+#
+# Native handlers
+#
+
+  _onReject: ->
+    @finished = no
+
+  _onGrant: emptyFunction
+
+  _onEnd: (finished, event) ->
+    @_computeFinalVelocity()
+    @finished = finished
+
+  _onTouchStart: (event) ->
+    @touchCount = touchHistory.numberActiveTouches
+    @_onTouchCountChanged()
+    @_updateEvent()
+
+  _onTouchMove: (event) ->
+    if @touchCount < touchHistory.numberActiveTouches
+      @_onTouchStart event
+      return no
+    else if @touchCount > touchHistory.numberActiveTouches
+      @_onTouchEnd event
+      return no
+    @_lastMoveTime = Date.now()
+    @_prevX = @_x
+    @_prevY = @_y
+    @_x = currentCentroidX touchHistory
+    @_y = currentCentroidY touchHistory
+    @_resetLazyValues()
+    @_updateEvent()
+    return yes
+
+  _onTouchEnd: (event) ->
+    @touchCount = touchHistory.numberActiveTouches
+    @_onTouchCountChanged() if @touchCount > 0
+
+  # When a touch starts or ends, we update the
+  # positional values in a way that prevents visual jumps.
+  _onTouchCountChanged: ->
+
+    x = currentCentroidX touchHistory
+    y = currentCentroidY touchHistory
+
+    dx = x - @_x
+    dy = y - @_y
+
+    @_x = x
+    @_y = y
+
+    @_x0 += dx
+    @_y0 += dy
+
+    @_prevX += dx
+    @_prevY += dy
+
+    @_dt.reset()
+
+    @_vx.set 0
+    @_vy.set 0

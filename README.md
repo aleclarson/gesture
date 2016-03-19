@@ -14,7 +14,7 @@ Options:
 Properties:
 
 - `isTouching: Boolean { get }`
-- `finished: Boolean { get }`
+- `finished: [ Boolean, Null ] { get }`
 - `x: Number { get }`
 - `y: Number { get }`
 - `x0: Number { get }`
@@ -48,13 +48,16 @@ Events:
 - `didTouchMove(Gesture)`
 - `didTouchEnd(Gesture)`
 
-### Gesture.Combinator
+### Gesture.ResponderList
 
-Combines multiple `Gesture.Responder` instances into a single package. This allows you to add multiple responders to a single `View`.
+Combines multiple `Gesture.Responder` instances into an ordered list.
+
+This allows you to add multiple responders to a single `View`.
 
 ```coffee
-dragXY = Gesture.Combinator [ dragX, dragY ]
+# In this example, `dragY` can capture `dragX`.
+dragXY = Gesture.ResponderList [ dragX, dragY ]
 
-# Mix this into the props for a View.
+# A props mixin just like Responder has.
 dragXY.touchHandlers
 ```
