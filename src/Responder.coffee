@@ -6,6 +6,7 @@
 
 ResponderEventPlugin = require "ResponderEventPlugin"
 emptyFunction = require "emptyFunction"
+Immutable = require "immutable"
 Factory = require "factory"
 Event = require "event"
 hook = require "hook"
@@ -69,8 +70,7 @@ Responder = Factory "Gesture_Responder",
         @_onTerminate() # TODO: Do we need to create a ResponderSyntheticEvent here?
 
     isTouching: get: ->
-      return no unless @_gesture
-      return @_gesture.isTouching
+      @_active
 
     isCaptured: get: ->
       @_captured
@@ -110,6 +110,8 @@ Responder = Factory "Gesture_Responder",
     _ended: no
 
     _gesture: null
+
+    _lastGesture: null
 
   _needsUpdate: ->
     unless @_enabled
@@ -156,6 +158,7 @@ Responder = Factory "Gesture_Responder",
     if @_captured
       @didEnd.emit @_gesture
       @_captured = no
+    @_lastGesture = @_gesture
     @_gesture = null
     @_clearActiveResponder()
     return

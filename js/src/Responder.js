@@ -1,4 +1,4 @@
-var Event, Factory, Gesture, Responder, ResponderEventPlugin, ResponderMixin, activeResponder, assertType, didSetActiveResponder, eligibleResponders, emptyFunction, hook, sync, touchHistory;
+var Event, Factory, Gesture, Immutable, Responder, ResponderEventPlugin, ResponderMixin, activeResponder, assertType, didSetActiveResponder, eligibleResponders, emptyFunction, hook, sync, touchHistory;
 
 touchHistory = require("ResponderTouchHistoryStore").touchHistory;
 
@@ -7,6 +7,8 @@ assertType = require("type-utils").assertType;
 ResponderEventPlugin = require("ResponderEventPlugin");
 
 emptyFunction = require("emptyFunction");
+
+Immutable = require("immutable");
 
 Factory = require("factory");
 
@@ -88,10 +90,7 @@ module.exports = Responder = Factory("Gesture_Responder", {
     },
     isTouching: {
       get: function() {
-        if (!this._gesture) {
-          return false;
-        }
-        return this._gesture.isTouching;
+        return this._active;
       }
     },
     isCaptured: {
@@ -133,7 +132,8 @@ module.exports = Responder = Factory("Gesture_Responder", {
       _active: false,
       _captured: false,
       _ended: false,
-      _gesture: null
+      _gesture: null,
+      _lastGesture: null
     };
   },
   _needsUpdate: function() {
@@ -186,6 +186,7 @@ module.exports = Responder = Factory("Gesture_Responder", {
       this.didEnd.emit(this._gesture);
       this._captured = false;
     }
+    this._lastGesture = this._gesture;
     this._gesture = null;
     this._clearActiveResponder();
   },
