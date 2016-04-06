@@ -43,14 +43,9 @@ module.exports = Factory "Gesture_ResponderList",
       responder.touchHandlers.onResponderReject? event
       return no
     @_onResponderTerminate event
-    @_clearActiveResponder()
     @_activeResponder = responder
     @_onResponderGrant event
     return yes
-
-  _clearActiveResponder: (event) ->
-    @_activeResponder = null
-    return
 
   _shouldRespond: (phase, event) ->
     assert @_activeResponder is null
@@ -71,52 +66,46 @@ module.exports = Factory "Gesture_ResponderList",
     return shouldCapture
 
   _onStartShouldSetResponder: (event) ->
-    return @_shouldRespond "onStartShouldSetResponder", event
+    @_shouldRespond "onStartShouldSetResponder", event
 
   _onMoveShouldSetResponder: (event) ->
-    return @_shouldRespond "onMoveShouldSetResponder", event
+    @_shouldRespond "onMoveShouldSetResponder", event
 
   _onEndShouldSetResponder: (event) ->
-    return @_shouldRespond "onEndShouldSetResponder", event
+    @_shouldRespond "onEndShouldSetResponder", event
 
   _onStartShouldSetResponderCapture: (event) ->
-    return @_shouldCapture "onStartShouldSetResponderCapture", event
+    @_shouldCapture "onStartShouldSetResponderCapture", event
 
   _onMoveShouldSetResponderCapture: (event) ->
-    return @_shouldCapture "onMoveShouldSetResponderCapture", event
+    @_shouldCapture "onMoveShouldSetResponderCapture", event
 
   _onEndShouldSetResponderCapture: (event) ->
-    return @_shouldCapture "onEndShouldSetResponderCapture", event
+    @_shouldCapture "onEndShouldSetResponderCapture", event
 
   _onResponderReject: (event) ->
     @_activeResponder.touchHandlers.onResponderReject event
-    return
 
   _onResponderGrant: (event) ->
-    return @_activeResponder.touchHandlers.onResponderGrant event
+    @_activeResponder.touchHandlers.onResponderGrant event
 
   _onResponderStart: (event) ->
     @_activeResponder.touchHandlers.onResponderStart event
-    return
 
   _onResponderMove: (event) ->
     @_onMoveShouldSetResponderCapture event
     @_activeResponder.touchHandlers.onResponderMove event
-    return
 
   _onResponderEnd: (event) ->
     @_activeResponder.touchHandlers.onResponderEnd event
-    return
 
   _onResponderRelease: (event) ->
     @_activeResponder.touchHandlers.onResponderRelease event
-    @_clearActiveResponder event
-    return
+    @_activeResponder = null
 
   _onResponderTerminate: (event) ->
     @_activeResponder.touchHandlers.onResponderTerminate event
-    @_clearActiveResponder event
-    return
+    @_activeResponder = null
 
   _onResponderTerminationRequest: (event) ->
-    return @_activeResponder.touchHandlers.onResponderTerminationRequest event
+    @_activeResponder.touchHandlers.onResponderTerminationRequest event

@@ -58,13 +58,9 @@ module.exports = Factory("Gesture_ResponderList", {
       return false;
     }
     this._onResponderTerminate(event);
-    this._clearActiveResponder();
     this._activeResponder = responder;
     this._onResponderGrant(event);
     return true;
-  },
-  _clearActiveResponder: function(event) {
-    this._activeResponder = null;
   },
   _shouldRespond: function(phase, event) {
     var shouldRespond;
@@ -113,28 +109,28 @@ module.exports = Factory("Gesture_ResponderList", {
     return this._shouldCapture("onEndShouldSetResponderCapture", event);
   },
   _onResponderReject: function(event) {
-    this._activeResponder.touchHandlers.onResponderReject(event);
+    return this._activeResponder.touchHandlers.onResponderReject(event);
   },
   _onResponderGrant: function(event) {
     return this._activeResponder.touchHandlers.onResponderGrant(event);
   },
   _onResponderStart: function(event) {
-    this._activeResponder.touchHandlers.onResponderStart(event);
+    return this._activeResponder.touchHandlers.onResponderStart(event);
   },
   _onResponderMove: function(event) {
     this._onMoveShouldSetResponderCapture(event);
-    this._activeResponder.touchHandlers.onResponderMove(event);
+    return this._activeResponder.touchHandlers.onResponderMove(event);
   },
   _onResponderEnd: function(event) {
-    this._activeResponder.touchHandlers.onResponderEnd(event);
+    return this._activeResponder.touchHandlers.onResponderEnd(event);
   },
   _onResponderRelease: function(event) {
     this._activeResponder.touchHandlers.onResponderRelease(event);
-    this._clearActiveResponder(event);
+    return this._activeResponder = null;
   },
   _onResponderTerminate: function(event) {
     this._activeResponder.touchHandlers.onResponderTerminate(event);
-    this._clearActiveResponder(event);
+    return this._activeResponder = null;
   },
   _onResponderTerminationRequest: function(event) {
     return this._activeResponder.touchHandlers.onResponderTerminationRequest(event);

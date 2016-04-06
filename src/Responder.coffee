@@ -6,42 +6,36 @@
 
 ResponderEventPlugin = require "ResponderEventPlugin"
 emptyFunction = require "emptyFunction"
-Immutable = require "immutable"
 Factory = require "factory"
 Event = require "event"
 hook = require "hook"
-sync = require "sync"
 
-ResponderMixin = require "./ResponderMixin"
 Gesture = require "./Gesture"
 
-activeResponder = null
-didSetActiveResponder = Event()
-
-eligibleResponders = Immutable.OrderedSet()
 hook.before ResponderEventPlugin, "onFinalTouch", (event) ->
-  return if eligibleResponders.size is 0
-  eligibleResponders.forEach (responder) ->
-    return yes unless responder._gesture
-    responder._onTouchEnd event
-    responder._deinitGesture()
-    return yes
-  eligibleResponders = Immutable.OrderedSet()
+  responders = Responder.activeResponders
+  return if responders.length is 0
+  for responder in responders
+    responder.terminate event, yes
+  responders.length = 0
 
 module.exports =
 Responder = Factory "Gesture_Responder",
 
   statics:
 
-    activeResponder: get: ->
-      activeResponder
+    # All responders that are capable of claiming the active touch.
+    activeResponders: []
 
-    didSetActiveResponder: get: ->
-      didSetActiveResponder.listenable
+    # The responder that most recently claimed to the active touch.
+    capturedResponder: null
+
+    # Emits when the `capturedResponder` has a new value!
+    didResponderCapture: Event()
 
   optionTypes:
-    minTouchCount: Number
-    maxTouchCount: Number
+    # minTouchCount: Number
+    # maxTouchCount: Number
     shouldRespondOnStart: Function
     shouldRespondOnMove: Function
     shouldRespondOnEnd: Function
@@ -51,8 +45,8 @@ Responder = Factory "Gesture_Responder",
     shouldTerminate: Function
 
   optionDefaults:
-    minTouchCount: 1
-    maxTouchCount: Infinity
+    # minTouchCount: 1
+    # maxTouchCount: Infinity
     shouldRespondOnStart: emptyFunction.thatReturnsTrue
     shouldRespondOnMove: emptyFunction.thatReturnsFalse
     shouldRespondOnEnd: emptyFunction.thatReturnsFalse
@@ -63,29 +57,39 @@ Responder = Factory "Gesture_Responder",
 
   customValues:
 
-    isEnabled:
-      get: -> @_enabled
-      set: (isEnabled) ->
-        @_enabled = isEnabled
-        @_onTerminate() # TODO: Do we need to create a ResponderSyntheticEvent here?
+    touchHandlers: get: ->
+      @_createMixin()
 
-    isTouching: get: ->
-      @_active
+    isEnabled:
+      value: yes
+      reactive: yes
+      didSet: ->
+        # TODO: Does this need a ResponderSyntheticEvent?
+        @terminate()
+
+    isActive: get: ->
+      @_gesture isnt null
 
     isCaptured: get: ->
-      @_captured
+      @_isCaptured
 
-    touchHandlers: lazy: ->
-      self = this
-      sync.map ResponderMixin, (handler) ->
-        return -> handler.apply self, arguments
+    gesture: get: ->
+      @_gesture
 
-    _gestureType: lazy: ->
-      @_getGestureType()
+    _gesture:
+      value: null
+      reactive: yes
 
-  initFrozenValues: (options) ->
+    _isCaptured:
+      value: no
+      reactive: yes
+      didSet: (newValue, oldValue) ->
+        return if newValue is oldValue
+        responder = if newValue then this else null
+        Responder.capturedResponder = responder
+        Responder.didResponderCapture.emit responder
 
-    _options: options
+  initFrozenValues: ->
 
     didReject: Event()
 
@@ -99,127 +103,249 @@ Responder = Factory "Gesture_Responder",
 
     didTouchEnd: Event()
 
-  initReactiveValues: ->
+  initValues: (options) ->
 
-    _enabled: yes
+    _shouldRespondOnStart: options.shouldRespondOnStart
 
-    _active: no
+    _shouldRespondOnMove: options.shouldRespondOnMove
 
-    _captured: no
+    _shouldRespondOnEnd: options.shouldRespondOnEnd
 
-    _ended: no
+    _shouldCaptureOnStart: options.shouldCaptureOnStart
 
-    _gesture: null
+    _shouldCaptureOnMove: options.shouldCaptureOnMove
 
-    _lastGesture: null
+    _shouldCaptureOnEnd: options.shouldCaptureOnEnd
 
-  _needsUpdate: ->
-    unless @_enabled
-      return no
-    if @_ended
-      return no
-    if @_gesture
-      return @_gesture.needsUpdate
-    return yes
+    _shouldTerminate: options.shouldTerminate
 
-  _setActiveResponder: ->
-    return if activeResponder
-    didSetActiveResponder.emit activeResponder = this
+  terminate: (event, finished) ->
+
+    return unless @isActive
+
+    @__onTouchEnd event, 0
+
+    if @isCaptured
+      if finished is yes then @__onRelease event
+      else @__onTerminate event
+
+    @_deleteGesture()
+
     return
 
-  _clearActiveResponder: ->
-    return if activeResponder isnt this
-    didSetActiveResponder.emit activeResponder = null
-    return
+  __canUpdate: ->
+    return @isEnabled and @_gesture and @_gesture.isActive
 
-  _setEligibleResponder: ->
-    eligibleResponders = eligibleResponders.add this
-    @_ended = no
-    return
+  __createGesture: (options) ->
+    return Gesture options
 
-  _clearEligibleResponder: ->
-    eligibleResponders = eligibleResponders.remove this
-    return
+  __shouldRespondOnStart: ->
+    @_shouldRespondOnStart @_gesture
 
-  _getGestureType: ->
-    return Gesture
+  __shouldRespondOnMove: ->
+    @_shouldRespondOnMove @_gesture
 
-  _initGesture: (event) ->
-    assert not @_active
-    @_active = yes
-    @_gesture = @_gestureType { event }
-    return
+  __shouldRespondOnEnd: ->
+    @_shouldRespondOnEnd @_gesture
 
-  _deinitGesture: ->
-    assertType @_gesture, Gesture.Kind
-    @_clearEligibleResponder()
-    @_active = no
-    @_ended = yes
-    if @_captured
-      @didEnd.emit @_gesture
-      @_captured = no
-    @_lastGesture = @_gesture
-    @_gesture = null
-    @_clearActiveResponder()
-    return
+  __shouldCaptureOnStart: ->
+    @_shouldCaptureOnStart @_gesture
 
-  _shouldRespondOnStart: ->
-    return @_options.shouldRespondOnStart @_gesture
+  __shouldCaptureOnMove: ->
+    @_shouldCaptureOnMove @_gesture
 
-  _shouldRespondOnMove: ->
-    return @_options.shouldRespondOnMove @_gesture
+  __shouldCaptureOnEnd: ->
+    @_shouldCaptureOnEnd @_gesture
 
-  _shouldRespondOnEnd: ->
-    return @_options.shouldRespondOnEnd @_gesture
-
-  _shouldCaptureOnStart: ->
-    return @_options.shouldCaptureOnStart @_gesture
-
-  _shouldCaptureOnMove: ->
-    return @_options.shouldCaptureOnMove @_gesture
-
-  _shouldCaptureOnEnd: ->
-    return @_options.shouldCaptureOnEnd @_gesture
-
-  _onTouchStart: (event) ->
-    return no if @_active and @_gesture.touchCount is touchHistory.numberActiveTouches
-    @_initGesture event unless @_active
-    @_gesture._onTouchStart event
+  __onTouchStart: (event, touchCount) ->
+    log.it "#{@__id}.__onTouchStart()"
+    @_gesture.__onTouchStart event, touchCount
     @didTouchStart.emit @_gesture, event
-    return yes
 
-  _onTouchMove: (event) ->
-    @_gesture._onTouchMove event
+  __onTouchMove: (event) ->
+    @_gesture.__onTouchMove event
     @didTouchMove.emit @_gesture, event
-    return
 
-  _onTouchEnd: (event) ->
-    return no if @_gesture.touchCount is touchHistory.numberActiveTouches
-    @_gesture._onTouchEnd event
+  __onTouchEnd: (event, touchCount) ->
+    log.it "#{@__id}.__onTouchEnd()"
+    @_gesture.__onTouchEnd event, touchCount
     @didTouchEnd.emit @_gesture, event
-    return yes
 
-  _onReject: (event) ->
-    @_gesture._onReject event
+  __onReject: (event) ->
+    log.it "#{@__id}.__onReject()"
+    @_gesture.__onReject event
     @didReject.emit @_gesture, event
-    return
 
-  _onGrant: (event) ->
-    assert not @_captured
-    @_captured = yes
-    @_gesture._onGrant event
+  __onGrant: (event) ->
+    log.it "#{@__id}.__onGrant()"
+    @_gesture.__onGrant event
     @didGrant.emit @_gesture, event
-    return
 
-  _onEnd: (event) ->
-    @_gesture._onEnd yes, event
-    @_deinitGesture()
-    return
+  __onRelease: (event) ->
+    log.it "#{@__id}.__onRelease()"
+    @_gesture.__onEnd yes, event
+    @didEnd.emit @_gesture, event
 
-  _onTerminate: (event) ->
-    @_gesture._onEnd no, event
-    @_deinitGesture()
-    return
+  __onTerminate: (event) ->
+    log.it "#{@__id}.__onTerminate()"
+    @_gesture.__onEnd no, event
+    @didEnd.emit @_gesture, event
 
-  _onTerminationRequest: (event) ->
-    return @_options.shouldTerminate @_gesture, event
+  __onTerminationRequest: (event) ->
+    return yes unless @_gesture
+    return @_shouldTerminate @_gesture, event
+
+  _setActive: (isActive) ->
+    responders = Responder.activeResponders
+    if isActive then responders.push this
+    else responders.splice (responders.indexOf this), 1
+
+  _createGesture: (event) ->
+    return if @_gesture
+    @_gesture = @__createGesture { event }
+    @_setActive yes
+    assertType @_gesture, Gesture.Kind
+
+  _deleteGesture: ->
+    assert @isActive, "Gesture not yet created!"
+    @_isCaptured = no
+    @_gesture = null
+
+  _onTouchStart: (event, touchCount) ->
+    return if @_gesture.touchCount is touchCount
+    @__onTouchStart event, touchCount
+
+  _onTouchMove: (event, touchCount) ->
+
+    if @_gesture.touchCount < touchCount
+      @__onTouchStart event, touchCount
+      return
+
+    # TODO: Test this with multiple fingers.
+    assert @_gesture.touchCount is touchCount, "Should call '_onTouchEnd' inside '_onTouchMove'!"
+
+    # if @_gesture.touchCount > touchCount
+    #   @_onTouchEnd event, touchCount
+    #   return
+
+    @__onTouchMove event
+
+  _onTouchEnd: (event, touchCount) ->
+    assert @_gesture.touchCount isnt touchCount
+    @__onTouchEnd event, touchCount
+    return if touchCount > 0
+    @_deleteGesture()
+    @_setActive no
+
+  _createMixin: ->
+
+    onStartShouldSetResponder: (event) =>
+      @_createGesture event
+      return no unless @__canUpdate()
+      @_onTouchStart event, touchHistory.numberActiveTouches
+      return @__shouldRespondOnStart event
+
+    onMoveShouldSetResponder: (event) =>
+      return no unless @__canUpdate()
+      @_onTouchMove event, touchHistory.numberActiveTouches
+      return @__shouldRespondOnMove event
+
+    onEndShouldSetResponder: (event) =>
+
+      # If we jump from >1 touches to 0 touches,
+      # an event is dispatched when no touches are active.
+      return no if touchHistory.numberActiveTouches is 0
+
+      return no unless @__canUpdate()
+      @_onTouchEnd event, touchHistory.numberActiveTouches
+      return @__shouldRespondOnEnd event
+
+    onStartShouldSetResponderCapture: (event) =>
+      @_createGesture event
+      return no unless @__canUpdate()
+      @_onTouchStart event, touchHistory.numberActiveTouches
+      return @__shouldCaptureOnStart event
+
+    onMoveShouldSetResponderCapture: (event) =>
+      return no unless @__canUpdate()
+      @_onTouchMove event, touchHistory.numberActiveTouches
+      return @__shouldCaptureOnMove event
+
+    onEndShouldSetResponderCapture: (event) =>
+
+      # If we jump from >1 touches to 0 touches,
+      # an event is dispatched when no touches are active.
+      if touchHistory.numberActiveTouches is 0
+        return no
+
+      return no unless @__canUpdate()
+      @_onTouchEnd event, touchHistory.numberActiveTouches
+      return @__shouldCaptureOnEnd event
+
+    # Called for every new finger that touches the screen.
+    # Batches simultaneous events.
+    # Responder does NOT need to capture before receiving this event.
+    onResponderStart: (event) =>
+      return unless @__canUpdate()
+      @_onTouchStart event, touchHistory.numberActiveTouches
+
+    # Called for every finger that moves.
+    # Batches simultaneous events.
+    # Responder does NOT need to capture before receiving this event.
+    onResponderMove: (event) =>
+      return unless @__canUpdate()
+      @_onTouchMove event, touchHistory.numberActiveTouches
+
+    # Called for every finger that stops touching the screen.
+    # Batches simultaneous events.
+    # Responder does NOT need to capture before receiving this event.
+    onResponderEnd: (event) =>
+      return unless @__canUpdate()
+      @_onTouchEnd event, touchHistory.numberActiveTouches
+
+    # This must be implemented in case the
+    # `capturedResponder` rejects a termination request.
+    onResponderReject: (event) =>
+      return unless @__canUpdate()
+      @__onReject event
+
+    # Must return true if native responders should be blocked.
+    onResponderGrant: (event) =>
+
+      unless @isCaptured
+
+        assert Responder.capturedResponder is null,
+          reason: "The `capturedResponder` must be null before it can be set to a new Responder!"
+          failedResponder: this
+          capturedResponder: Responder.capturedResponder
+
+        @_isCaptured = yes
+        @__onGrant event
+
+      return yes
+
+    # This event is detected earlier by ResponderEventPlugin.onFinalTouch()
+    onResponderRelease: emptyFunction
+
+    onResponderTerminate: (event) =>
+
+      return unless @__canUpdate()
+
+      # The `terminate` method was called.
+      if @gesture.touchCount is 0
+        console.info "Detected the terminate method!"
+        @__onTerminate event
+        return
+
+      # A higher responder captured the active touch.
+      console.info "Higher responder captured the active touch!"
+      @__onTouchEnd event, 0
+      @__onTerminate event
+      @_deleteGesture()
+      @_setActive no
+
+    # Must return false to block the capturing responder.
+    # responder must capture before receiving this event.
+    onResponderTerminationRequest: (event) =>
+      return yes unless @_gesture
+      return @__onTerminationRequest event
