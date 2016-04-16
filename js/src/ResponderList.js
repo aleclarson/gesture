@@ -1,4 +1,4 @@
-var ArrayOf, Factory, Responder, ResponderMixin, ResponderSyntheticEvent, assertType, isKind, isType, ref, sync;
+var ArrayOf, Factory, Responder, ResponderSyntheticEvent, assertType, isKind, isType, ref, sync;
 
 ref = require("type-utils"), ArrayOf = ref.ArrayOf, isType = ref.isType, isKind = ref.isKind, assertType = ref.assertType;
 
@@ -8,35 +8,34 @@ Factory = require("factory");
 
 sync = require("sync");
 
-ResponderMixin = require("./ResponderMixin");
-
 Responder = require("./Responder");
 
 module.exports = Factory("Gesture_ResponderList", {
   initArguments: function(responders) {
     assertType(responders, ArrayOf([Responder.Kind, Void]));
-    return arguments;
+    responders = sync.filter(responders, function(responder) {
+      return isKind(responder, Responder);
+    });
+    return [responders];
+  },
+  getFromCache: function(responders) {
+    if (responders.length === 0) {
+      return null;
+    }
+    if (responders.length === 1) {
+      return responders[0];
+    }
   },
   customValues: {
     touchHandlers: {
       lazy: function() {
-        var self;
-        self = this;
-        return sync.map(ResponderMixin, function(_, key) {
-          var handler;
-          handler = self["_" + key];
-          return function() {
-            return handler.apply(self, arguments);
-          };
-        });
+        return this._createMixin();
       }
     }
   },
   initFrozenValues: function(responders) {
     return {
-      _responders: sync.filter(responders, function(responder) {
-        return isKind(responder, Responder);
-      })
+      _responders: responders
     };
   },
   initValues: function() {
@@ -67,7 +66,7 @@ module.exports = Factory("Gesture_ResponderList", {
     assert(this._activeResponder === null);
     shouldRespond = false;
     sync.search(this._responders, function(responder) {
-      if (!responder.touchHandlers.onStartShouldSetResponder(event)) {
+      if (!responder.touchHandlers[phase](event)) {
         return true;
       }
       shouldRespond = this._setActiveResponder(responder, event);
@@ -82,7 +81,7 @@ module.exports = Factory("Gesture_ResponderList", {
       if (responder === this._activeResponder) {
         return false;
       }
-      if (!responder.touchHandlers.onEndShouldSetResponderCapture(event)) {
+      if (!responder.touchHandlers[phase](event)) {
         return true;
       }
       shouldCapture = this._setActiveResponder(responder, event);
@@ -90,50 +89,82 @@ module.exports = Factory("Gesture_ResponderList", {
     });
     return shouldCapture;
   },
-  _onStartShouldSetResponder: function(event) {
-    return this._shouldRespond("onStartShouldSetResponder", event);
-  },
-  _onMoveShouldSetResponder: function(event) {
-    return this._shouldRespond("onMoveShouldSetResponder", event);
-  },
-  _onEndShouldSetResponder: function(event) {
-    return this._shouldRespond("onEndShouldSetResponder", event);
-  },
-  _onStartShouldSetResponderCapture: function(event) {
-    return this._shouldCapture("onStartShouldSetResponderCapture", event);
-  },
-  _onMoveShouldSetResponderCapture: function(event) {
-    return this._shouldCapture("onMoveShouldSetResponderCapture", event);
-  },
-  _onEndShouldSetResponderCapture: function(event) {
-    return this._shouldCapture("onEndShouldSetResponderCapture", event);
-  },
-  _onResponderReject: function(event) {
-    return this._activeResponder.touchHandlers.onResponderReject(event);
-  },
-  _onResponderGrant: function(event) {
-    return this._activeResponder.touchHandlers.onResponderGrant(event);
-  },
-  _onResponderStart: function(event) {
-    return this._activeResponder.touchHandlers.onResponderStart(event);
-  },
-  _onResponderMove: function(event) {
-    this._onMoveShouldSetResponderCapture(event);
-    return this._activeResponder.touchHandlers.onResponderMove(event);
-  },
-  _onResponderEnd: function(event) {
-    return this._activeResponder.touchHandlers.onResponderEnd(event);
-  },
-  _onResponderRelease: function(event) {
-    this._activeResponder.touchHandlers.onResponderRelease(event);
-    return this._activeResponder = null;
-  },
-  _onResponderTerminate: function(event) {
-    this._activeResponder.touchHandlers.onResponderTerminate(event);
-    return this._activeResponder = null;
-  },
-  _onResponderTerminationRequest: function(event) {
-    return this._activeResponder.touchHandlers.onResponderTerminationRequest(event);
+  _createMixin: function() {
+    return {
+      onStartShouldSetResponder: (function(_this) {
+        return function(event) {
+          return _this._shouldRespond("onStartShouldSetResponder", event);
+        };
+      })(this),
+      onMoveShouldSetResponder: (function(_this) {
+        return function(event) {
+          return _this._shouldRespond("onMoveShouldSetResponder", event);
+        };
+      })(this),
+      onEndShouldSetResponder: (function(_this) {
+        return function(event) {
+          return _this._shouldRespond("onEndShouldSetResponder", event);
+        };
+      })(this),
+      onStartShouldSetResponderCapture: (function(_this) {
+        return function(event) {
+          return _this._shouldCapture("onStartShouldSetResponderCapture", event);
+        };
+      })(this),
+      onMoveShouldSetResponderCapture: (function(_this) {
+        return function(event) {
+          return _this._shouldCapture("onMoveShouldSetResponderCapture", event);
+        };
+      })(this),
+      onEndShouldSetResponderCapture: (function(_this) {
+        return function(event) {
+          return _this._shouldCapture("onEndShouldSetResponderCapture", event);
+        };
+      })(this),
+      onResponderReject: (function(_this) {
+        return function(event) {
+          return _this._activeResponder.touchHandlers.onResponderReject(event);
+        };
+      })(this),
+      onResponderGrant: (function(_this) {
+        return function(event) {
+          return _this._activeResponder.touchHandlers.onResponderGrant(event);
+        };
+      })(this),
+      onResponderStart: (function(_this) {
+        return function(event) {
+          return _this._activeResponder.touchHandlers.onResponderStart(event);
+        };
+      })(this),
+      onResponderMove: (function(_this) {
+        return function(event) {
+          _this._onMoveShouldSetResponderCapture(event);
+          return _this._activeResponder.touchHandlers.onResponderMove(event);
+        };
+      })(this),
+      onResponderEnd: (function(_this) {
+        return function(event) {
+          return _this._activeResponder.touchHandlers.onResponderEnd(event);
+        };
+      })(this),
+      onResponderRelease: (function(_this) {
+        return function(event) {
+          _this._activeResponder.touchHandlers.onResponderRelease(event);
+          return _this._activeResponder = null;
+        };
+      })(this),
+      onResponderTerminate: (function(_this) {
+        return function(event) {
+          _this._activeResponder.touchHandlers.onResponderTerminate(event);
+          return _this._activeResponder = null;
+        };
+      })(this),
+      onResponderTerminationRequest: (function(_this) {
+        return function(event) {
+          return _this._activeResponder.touchHandlers.onResponderTerminationRequest(event);
+        };
+      })(this)
+    };
   }
 });
 

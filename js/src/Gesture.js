@@ -26,7 +26,8 @@ module.exports = Gesture = Factory("Gesture", {
     }
   },
   optionTypes: {
-    event: ResponderSyntheticEvent
+    x: Number,
+    y: Number
   },
   customValues: {
     isActive: {
@@ -114,28 +115,24 @@ module.exports = Gesture = Factory("Gesture", {
       })(this))
     };
   },
-  initValues: function() {
+  initValues: function(options) {
     return {
       touchCount: touchHistory.numberActiveTouches,
       finished: null,
       _currentTime: 0,
       _prevTime: null,
-      _x0: null,
-      _y0: null,
-      _x: null,
-      _y: null,
-      _prevX: null,
-      _prevY: null,
+      _x0: options.x,
+      _y0: options.y,
+      _x: options.x,
+      _y: options.y,
+      _prevX: options.x,
+      _prevY: options.y,
       _grantDX: 0,
       _grantDY: 0,
       _lastMoveTime: null
     };
   },
-  init: function(options) {
-    var nativeEvent;
-    nativeEvent = options.event.nativeEvent;
-    this._x = this._prevX = this._x0 = nativeEvent.pageX;
-    this._y = this._prevY = this._y0 = nativeEvent.pageY;
+  init: function() {
     this._dx.set(0);
     this._dy.set(0);
     this._dt.set(0);
@@ -169,14 +166,14 @@ module.exports = Gesture = Factory("Gesture", {
     this._grantDX = this.dx;
     return this._grantDY = this.dy;
   },
-  __onEnd: function(finished, event) {
+  __onEnd: function(finished) {
     this.finished = finished;
     if (this._lastMoveTime && (Date.now() - this._lastMoveTime) >= 150) {
       this._vx.set(0);
       return this._vy.set(0);
     }
   },
-  __onTouchStart: function(event, touchCount) {
+  __onTouchStart: function(touchCount) {
     assert(touchCount > 0, "Invalid touch count!");
     this.touchCount = touchCount;
     if (!this.canUpdate) {
@@ -185,7 +182,7 @@ module.exports = Gesture = Factory("Gesture", {
     this._updateTime();
     return this._updateCentroid();
   },
-  __onTouchMove: function(event) {
+  __onTouchMove: function() {
     if (!this.canUpdate) {
       return;
     }
@@ -201,7 +198,7 @@ module.exports = Gesture = Factory("Gesture", {
     this._vx.reset();
     return this._vy.reset();
   },
-  __onTouchEnd: function(event, touchCount) {
+  __onTouchEnd: function(touchCount) {
     assert(touchCount >= 0, "Invalid touch count!");
     this.touchCount = touchCount;
     if (touchCount === 0) {

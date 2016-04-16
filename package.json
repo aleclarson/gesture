@@ -6,7 +6,20 @@
     "emptyFunction": "aleclarson/emptyFunction#1.0.0",
     "event": "aleclarson/event#1.0.0",
     "factory": "aleclarson/factory#1.0.0",
-    "io": "aleclarson/io#1.0.0",
+    "hook": "aleclarson/hook#1.0.0",
+    "lazy-var": "aleclarson/lazy-var#1.0.0",
+    "sync": "aleclarson/sync#1.0.0",
     "type-utils": "aleclarson/type-utils#1.0.0"
+  },
+  "lotus": {
+    "plugins": [
+      "lotus-coffee"
+    ],
+    "implicitDependencies": [
+      "ResponderEventPlugin",
+      "ResponderSyntheticEvent",
+      "ResponderTouchHistoryStore",
+      "TouchHistoryMath"
+    ]
   }
 }

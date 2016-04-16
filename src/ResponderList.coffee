@@ -8,27 +8,27 @@ ResponderSyntheticEvent = require "ResponderSyntheticEvent"
 Factory = require "factory"
 sync = require "sync"
 
-ResponderMixin = require "./ResponderMixin"
 Responder = require "./Responder"
 
 module.exports = Factory "Gesture_ResponderList",
 
   initArguments: (responders) ->
     assertType responders, ArrayOf [ Responder.Kind, Void ]
-    arguments
+    responders = sync.filter responders, (responder) -> isKind responder, Responder
+    [ responders ]
+
+  getFromCache: (responders) ->
+    return null if responders.length is 0
+    return responders[0] if responders.length is 1
 
   customValues:
 
     touchHandlers: lazy: ->
-      self = this
-      sync.map ResponderMixin, (_, key) ->
-        handler = self["_" + key]
-        return -> handler.apply self, arguments
+      @_createMixin()
 
   initFrozenValues: (responders) ->
 
-    _responders: sync.filter responders, (responder) ->
-      isKind responder, Responder
+    _responders: responders
 
   initValues: ->
 
@@ -51,7 +51,7 @@ module.exports = Factory "Gesture_ResponderList",
     assert @_activeResponder is null
     shouldRespond = no
     sync.search @_responders, (responder) ->
-      return yes unless responder.touchHandlers.onStartShouldSetResponder event
+      return yes unless responder.touchHandlers[phase] event
       shouldRespond = @_setActiveResponder responder, event
       return no
     return shouldRespond
@@ -60,52 +60,54 @@ module.exports = Factory "Gesture_ResponderList",
     shouldCapture = no
     sync.searchFromEnd @_responders, (responder) ->
       return no if responder is @_activeResponder
-      return yes unless responder.touchHandlers.onEndShouldSetResponderCapture event
+      return yes unless responder.touchHandlers[phase] event
       shouldCapture = @_setActiveResponder responder, event
       return no
     return shouldCapture
 
-  _onStartShouldSetResponder: (event) ->
-    @_shouldRespond "onStartShouldSetResponder", event
+  _createMixin: ->
 
-  _onMoveShouldSetResponder: (event) ->
-    @_shouldRespond "onMoveShouldSetResponder", event
+    onStartShouldSetResponder: (event) =>
+      @_shouldRespond "onStartShouldSetResponder", event
 
-  _onEndShouldSetResponder: (event) ->
-    @_shouldRespond "onEndShouldSetResponder", event
+    onMoveShouldSetResponder: (event) =>
+      @_shouldRespond "onMoveShouldSetResponder", event
 
-  _onStartShouldSetResponderCapture: (event) ->
-    @_shouldCapture "onStartShouldSetResponderCapture", event
+    onEndShouldSetResponder: (event) =>
+      @_shouldRespond "onEndShouldSetResponder", event
 
-  _onMoveShouldSetResponderCapture: (event) ->
-    @_shouldCapture "onMoveShouldSetResponderCapture", event
+    onStartShouldSetResponderCapture: (event) =>
+      @_shouldCapture "onStartShouldSetResponderCapture", event
 
-  _onEndShouldSetResponderCapture: (event) ->
-    @_shouldCapture "onEndShouldSetResponderCapture", event
+    onMoveShouldSetResponderCapture: (event) =>
+      @_shouldCapture "onMoveShouldSetResponderCapture", event
 
-  _onResponderReject: (event) ->
-    @_activeResponder.touchHandlers.onResponderReject event
+    onEndShouldSetResponderCapture: (event) =>
+      @_shouldCapture "onEndShouldSetResponderCapture", event
 
-  _onResponderGrant: (event) ->
-    @_activeResponder.touchHandlers.onResponderGrant event
+    onResponderReject: (event) =>
+      @_activeResponder.touchHandlers.onResponderReject event
 
-  _onResponderStart: (event) ->
-    @_activeResponder.touchHandlers.onResponderStart event
+    onResponderGrant: (event) =>
+      @_activeResponder.touchHandlers.onResponderGrant event
 
-  _onResponderMove: (event) ->
-    @_onMoveShouldSetResponderCapture event
-    @_activeResponder.touchHandlers.onResponderMove event
+    onResponderStart: (event) =>
+      @_activeResponder.touchHandlers.onResponderStart event
 
-  _onResponderEnd: (event) ->
-    @_activeResponder.touchHandlers.onResponderEnd event
+    onResponderMove: (event) =>
+      @_onMoveShouldSetResponderCapture event
+      @_activeResponder.touchHandlers.onResponderMove event
 
-  _onResponderRelease: (event) ->
-    @_activeResponder.touchHandlers.onResponderRelease event
-    @_activeResponder = null
+    onResponderEnd: (event) =>
+      @_activeResponder.touchHandlers.onResponderEnd event
 
-  _onResponderTerminate: (event) ->
-    @_activeResponder.touchHandlers.onResponderTerminate event
-    @_activeResponder = null
+    onResponderRelease: (event) =>
+      @_activeResponder.touchHandlers.onResponderRelease event
+      @_activeResponder = null
 
-  _onResponderTerminationRequest: (event) ->
-    @_activeResponder.touchHandlers.onResponderTerminationRequest event
+    onResponderTerminate: (event) =>
+      @_activeResponder.touchHandlers.onResponderTerminate event
+      @_activeResponder = null
+
+    onResponderTerminationRequest: (event) =>
+      @_activeResponder.touchHandlers.onResponderTerminationRequest event

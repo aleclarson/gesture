@@ -19,31 +19,25 @@ Gesture = Factory "Gesture",
       require "./ResponderList"
 
   optionTypes:
-    event: ResponderSyntheticEvent
+    x: Number
+    y: Number
 
   customValues:
 
-    isActive: get: -> @finished is null
+    isActive: get: ->
+      @finished is null
 
     canUpdate: get: ->
-      return @_currentTime < touchHistory.mostRecentTimeStamp
+      @_currentTime < touchHistory.mostRecentTimeStamp
 
     x0: get: -> @_x0
-
     y0: get: -> @_y0
-
     x: get: -> @_x
-
     y: get: -> @_y
-
     dx: get: -> @_dx.get()
-
     dy: get: -> @_dy.get()
-
     dt: get: -> @_dt.get()
-
     vx: get: -> @_vx.get()
-
     vy: get: -> @_vy.get()
 
   initFrozenValues: ->
@@ -63,7 +57,7 @@ Gesture = Factory "Gesture",
     _vy: LazyVar =>
       (@_y - @_prevY) / @_dt.get()
 
-  initValues: ->
+  initValues: (options) ->
 
     touchCount: touchHistory.numberActiveTouches
 
@@ -73,17 +67,17 @@ Gesture = Factory "Gesture",
 
     _prevTime: null
 
-    _x0: null
+    _x0: options.x
 
-    _y0: null
+    _y0: options.y
 
-    _x: null
+    _x: options.x
 
-    _y: null
+    _y: options.y
 
-    _prevX: null
+    _prevX: options.x
 
-    _prevY: null
+    _prevY: options.y
 
     _grantDX: 0
 
@@ -91,12 +85,7 @@ Gesture = Factory "Gesture",
 
     _lastMoveTime: null
 
-  init: (options) ->
-
-    { nativeEvent } = options.event
-    @_x = @_prevX = @_x0 = nativeEvent.pageX
-    @_y = @_prevY = @_y0 = nativeEvent.pageY
-
+  init: ->
     @_dx.set 0
     @_dy.set 0
     @_dt.set 0
@@ -138,7 +127,7 @@ Gesture = Factory "Gesture",
     @_grantDX = @dx
     @_grantDY = @dy
 
-  __onEnd: (finished, event) ->
+  __onEnd: (finished) ->
 
     @finished = finished
 
@@ -147,7 +136,7 @@ Gesture = Factory "Gesture",
       @_vx.set 0
       @_vy.set 0
 
-  __onTouchStart: (event, touchCount) ->
+  __onTouchStart: (touchCount) ->
 
     assert touchCount > 0, "Invalid touch count!"
     @touchCount = touchCount
@@ -156,7 +145,7 @@ Gesture = Factory "Gesture",
     @_updateTime()
     @_updateCentroid()
 
-  __onTouchMove: (event) ->
+  __onTouchMove: ->
 
     return unless @canUpdate
     @_updateTime()
@@ -173,7 +162,7 @@ Gesture = Factory "Gesture",
     @_vx.reset()
     @_vy.reset()
 
-  __onTouchEnd: (event, touchCount) ->
+  __onTouchEnd: (touchCount) ->
 
     assert touchCount >= 0, "Invalid touch count!"
     @touchCount = touchCount
