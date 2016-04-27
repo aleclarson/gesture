@@ -40,21 +40,19 @@ module.exports = Responder = Factory("Gesture_Responder", {
     didResponderCapture: Event()
   },
   optionTypes: {
+    minTouchCount: Number,
     shouldRespondOnStart: Function,
     shouldRespondOnMove: Function,
-    shouldRespondOnEnd: Function,
     shouldCaptureOnStart: Function,
     shouldCaptureOnMove: Function,
-    shouldCaptureOnEnd: Function,
     shouldTerminate: Function
   },
   optionDefaults: {
+    minTouchCount: 1,
     shouldRespondOnStart: emptyFunction.thatReturnsTrue,
     shouldRespondOnMove: emptyFunction.thatReturnsFalse,
-    shouldRespondOnEnd: emptyFunction.thatReturnsFalse,
     shouldCaptureOnStart: emptyFunction.thatReturnsFalse,
     shouldCaptureOnMove: emptyFunction.thatReturnsFalse,
-    shouldCaptureOnEnd: emptyFunction.thatReturnsFalse,
     shouldTerminate: emptyFunction.thatReturnsTrue
   },
   customValues: {
@@ -86,8 +84,9 @@ module.exports = Responder = Factory("Gesture_Responder", {
       }
     }
   },
-  initFrozenValues: function() {
+  initFrozenValues: function(options) {
     return {
+      minTouchCount: options.minTouchCount,
       didReject: Event(),
       didGrant: Event(),
       didEnd: Event(),
@@ -100,10 +99,8 @@ module.exports = Responder = Factory("Gesture_Responder", {
     return {
       _shouldRespondOnStart: options.shouldRespondOnStart,
       _shouldRespondOnMove: options.shouldRespondOnMove,
-      _shouldRespondOnEnd: options.shouldRespondOnEnd,
       _shouldCaptureOnStart: options.shouldCaptureOnStart,
       _shouldCaptureOnMove: options.shouldCaptureOnMove,
-      _shouldCaptureOnEnd: options.shouldCaptureOnEnd,
       _shouldTerminate: options.shouldTerminate
     };
   },
@@ -146,17 +143,11 @@ module.exports = Responder = Factory("Gesture_Responder", {
   __shouldRespondOnMove: function() {
     return this._shouldRespondOnMove(this._gesture);
   },
-  __shouldRespondOnEnd: function() {
-    return this._shouldRespondOnEnd(this._gesture);
-  },
   __shouldCaptureOnStart: function() {
     return this._shouldCaptureOnStart(this._gesture);
   },
   __shouldCaptureOnMove: function() {
     return this._shouldCaptureOnMove(this._gesture);
-  },
-  __shouldCaptureOnEnd: function() {
-    return this._shouldCaptureOnEnd(this._gesture);
   },
   __onTouchStart: function(touchCount) {
     this._gesture.__onTouchStart(touchCount);
@@ -259,8 +250,10 @@ module.exports = Responder = Factory("Gesture_Responder", {
     if (this._gesture.touchCount < touchCount) {
       this.__onTouchStart(touchCount);
       return;
+    } else if (this._gesture.touchCount > touchCount) {
+      this._onTouchEnd(touchCount);
+      return;
     }
-    assert(this._gesture.touchCount === touchCount, "Should call '_onTouchEnd' inside '_onTouchMove'!");
     return this.__onTouchMove();
   },
   _onTouchEnd: function(touchCount) {
@@ -275,6 +268,12 @@ module.exports = Responder = Factory("Gesture_Responder", {
     return {
       onStartShouldSetResponder: (function(_this) {
         return function(event) {
+          if (Responder.capturedResponder) {
+            return false;
+          }
+          if (touchHistory.numberActiveTouches < _this.minTouchCount) {
+            return false;
+          }
           _this._createGesture(event);
           if (!_this.__canUpdate()) {
             return false;
@@ -285,6 +284,9 @@ module.exports = Responder = Factory("Gesture_Responder", {
       })(this),
       onMoveShouldSetResponder: (function(_this) {
         return function() {
+          if (touchHistory.numberActiveTouches < _this.minTouchCount) {
+            return false;
+          }
           if (!_this.__canUpdate()) {
             return false;
           }
@@ -292,20 +294,11 @@ module.exports = Responder = Factory("Gesture_Responder", {
           return _this.__shouldRespondOnMove();
         };
       })(this),
-      onEndShouldSetResponder: (function(_this) {
-        return function() {
-          if (touchHistory.numberActiveTouches === 0) {
-            return false;
-          }
-          if (!_this.__canUpdate()) {
-            return false;
-          }
-          _this._onTouchEnd(touchHistory.numberActiveTouches);
-          return _this.__shouldRespondOnEnd();
-        };
-      })(this),
       onStartShouldSetResponderCapture: (function(_this) {
         return function(event) {
+          if (touchHistory.numberActiveTouches < _this.minTouchCount) {
+            return false;
+          }
           _this._createGesture(event);
           if (!_this.__canUpdate()) {
             return false;
@@ -316,13 +309,14 @@ module.exports = Responder = Factory("Gesture_Responder", {
       })(this),
       onMoveShouldSetResponderCapture: (function(_this) {
         return function(event) {
-          var shouldCapture;
+          if (touchHistory.numberActiveTouches < _this.minTouchCount) {
+            return false;
+          }
           if (!_this.__canUpdate()) {
             return false;
           }
           _this._onTouchMove(touchHistory.numberActiveTouches);
-          shouldCapture = _this.__shouldCaptureOnMove(event);
-          return shouldCapture;
+          return _this.__shouldCaptureOnMove(event);
         };
       })(this),
       onEndShouldSetResponderCapture: (function(_this) {
@@ -334,7 +328,7 @@ module.exports = Responder = Factory("Gesture_Responder", {
             return false;
           }
           _this._onTouchEnd(touchHistory.numberActiveTouches);
-          return _this.__shouldCaptureOnEnd(event);
+          return false;
         };
       })(this),
       onResponderStart: (function(_this) {
@@ -371,6 +365,9 @@ module.exports = Responder = Factory("Gesture_Responder", {
       })(this),
       onResponderGrant: (function(_this) {
         return function() {
+          assert(_this._gesture !== null, {
+            reason: "A gesture must be created before 'onResponderGrant'!"
+          });
           if (!_this._isCaptured) {
             _this.capture();
           }

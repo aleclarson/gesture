@@ -50,7 +50,7 @@ module.exports = Factory "Gesture_ResponderList",
   _shouldRespond: (phase, event) ->
     assert @_activeResponder is null
     shouldRespond = no
-    sync.search @_responders, (responder) ->
+    sync.search @_responders, (responder) =>
       return yes unless responder.touchHandlers[phase] event
       shouldRespond = @_setActiveResponder responder, event
       return no
@@ -95,7 +95,8 @@ module.exports = Factory "Gesture_ResponderList",
       @_activeResponder.touchHandlers.onResponderStart event
 
     onResponderMove: (event) =>
-      @_onMoveShouldSetResponderCapture event
+      # Allow a responder in this ResponderList to become active.
+      @_shouldCapture "onMoveShouldSetResponderCapture", event
       @_activeResponder.touchHandlers.onResponderMove event
 
     onResponderEnd: (event) =>

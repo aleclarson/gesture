@@ -65,13 +65,15 @@ module.exports = Factory("Gesture_ResponderList", {
     var shouldRespond;
     assert(this._activeResponder === null);
     shouldRespond = false;
-    sync.search(this._responders, function(responder) {
-      if (!responder.touchHandlers[phase](event)) {
-        return true;
-      }
-      shouldRespond = this._setActiveResponder(responder, event);
-      return false;
-    });
+    sync.search(this._responders, (function(_this) {
+      return function(responder) {
+        if (!responder.touchHandlers[phase](event)) {
+          return true;
+        }
+        shouldRespond = _this._setActiveResponder(responder, event);
+        return false;
+      };
+    })(this));
     return shouldRespond;
   },
   _shouldCapture: function(phase, event) {
@@ -138,7 +140,7 @@ module.exports = Factory("Gesture_ResponderList", {
       })(this),
       onResponderMove: (function(_this) {
         return function(event) {
-          _this._onMoveShouldSetResponderCapture(event);
+          _this._shouldCapture("onMoveShouldSetResponderCapture", event);
           return _this._activeResponder.touchHandlers.onResponderMove(event);
         };
       })(this),
