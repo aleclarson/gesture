@@ -26,6 +26,9 @@ module.exports = Factory "Gesture_ResponderList",
     touchHandlers: lazy: ->
       @_createMixin()
 
+    _activeHandlers: get: ->
+      @_activeResponder.touchHandlers
+
   initFrozenValues: (responders) ->
 
     _responders: responders
@@ -39,12 +42,12 @@ module.exports = Factory "Gesture_ResponderList",
     unless @_activeResponder
       @_activeResponder = responder
       return yes
-    unless @_onResponderTerminationRequest event
+    unless @_activeHandlers.onResponderTerminationRequest event
       responder.touchHandlers.onResponderReject? event
       return no
-    @_onResponderTerminate event
+    @_activeHandlers.onResponderTerminate event
     @_activeResponder = responder
-    @_onResponderGrant event
+    @_activeHandlers.onResponderGrant event
     return yes
 
   _shouldRespond: (phase, event) ->
@@ -58,7 +61,7 @@ module.exports = Factory "Gesture_ResponderList",
 
   _shouldCapture: (phase, event) ->
     shouldCapture = no
-    sync.searchFromEnd @_responders, (responder) ->
+    sync.searchFromEnd @_responders, (responder) =>
       return no if responder is @_activeResponder
       return yes unless responder.touchHandlers[phase] event
       shouldCapture = @_setActiveResponder responder, event
@@ -86,29 +89,29 @@ module.exports = Factory "Gesture_ResponderList",
       @_shouldCapture "onEndShouldSetResponderCapture", event
 
     onResponderReject: (event) =>
-      @_activeResponder.touchHandlers.onResponderReject event
+      @_activeHandlers.onResponderReject event
 
     onResponderGrant: (event) =>
-      @_activeResponder.touchHandlers.onResponderGrant event
+      @_activeHandlers.onResponderGrant event
 
     onResponderStart: (event) =>
-      @_activeResponder.touchHandlers.onResponderStart event
+      @_activeHandlers.onResponderStart event
 
     onResponderMove: (event) =>
       # Allow a responder in this ResponderList to become active.
       @_shouldCapture "onMoveShouldSetResponderCapture", event
-      @_activeResponder.touchHandlers.onResponderMove event
+      @_activeHandlers.onResponderMove event
 
     onResponderEnd: (event) =>
-      @_activeResponder.touchHandlers.onResponderEnd event
+      @_activeHandlers.onResponderEnd event
 
     onResponderRelease: (event) =>
-      @_activeResponder.touchHandlers.onResponderRelease event
+      @_activeHandlers.onResponderRelease event
       @_activeResponder = null
 
     onResponderTerminate: (event) =>
-      @_activeResponder.touchHandlers.onResponderTerminate event
+      @_activeHandlers.onResponderTerminate event
       @_activeResponder = null
 
     onResponderTerminationRequest: (event) =>
-      @_activeResponder.touchHandlers.onResponderTerminationRequest event
+      @_activeHandlers.onResponderTerminationRequest event

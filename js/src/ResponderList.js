@@ -31,6 +31,11 @@ module.exports = Factory("Gesture_ResponderList", {
       lazy: function() {
         return this._createMixin();
       }
+    },
+    _activeHandlers: {
+      get: function() {
+        return this._activeResponder.touchHandlers;
+      }
     }
   },
   initFrozenValues: function(responders) {
@@ -50,15 +55,15 @@ module.exports = Factory("Gesture_ResponderList", {
       this._activeResponder = responder;
       return true;
     }
-    if (!this._onResponderTerminationRequest(event)) {
+    if (!this._activeHandlers.onResponderTerminationRequest(event)) {
       if (typeof (base = responder.touchHandlers).onResponderReject === "function") {
         base.onResponderReject(event);
       }
       return false;
     }
-    this._onResponderTerminate(event);
+    this._activeHandlers.onResponderTerminate(event);
     this._activeResponder = responder;
-    this._onResponderGrant(event);
+    this._activeHandlers.onResponderGrant(event);
     return true;
   },
   _shouldRespond: function(phase, event) {
@@ -79,16 +84,18 @@ module.exports = Factory("Gesture_ResponderList", {
   _shouldCapture: function(phase, event) {
     var shouldCapture;
     shouldCapture = false;
-    sync.searchFromEnd(this._responders, function(responder) {
-      if (responder === this._activeResponder) {
+    sync.searchFromEnd(this._responders, (function(_this) {
+      return function(responder) {
+        if (responder === _this._activeResponder) {
+          return false;
+        }
+        if (!responder.touchHandlers[phase](event)) {
+          return true;
+        }
+        shouldCapture = _this._setActiveResponder(responder, event);
         return false;
-      }
-      if (!responder.touchHandlers[phase](event)) {
-        return true;
-      }
-      shouldCapture = this._setActiveResponder(responder, event);
-      return false;
-    });
+      };
+    })(this));
     return shouldCapture;
   },
   _createMixin: function() {
@@ -125,45 +132,45 @@ module.exports = Factory("Gesture_ResponderList", {
       })(this),
       onResponderReject: (function(_this) {
         return function(event) {
-          return _this._activeResponder.touchHandlers.onResponderReject(event);
+          return _this._activeHandlers.onResponderReject(event);
         };
       })(this),
       onResponderGrant: (function(_this) {
         return function(event) {
-          return _this._activeResponder.touchHandlers.onResponderGrant(event);
+          return _this._activeHandlers.onResponderGrant(event);
         };
       })(this),
       onResponderStart: (function(_this) {
         return function(event) {
-          return _this._activeResponder.touchHandlers.onResponderStart(event);
+          return _this._activeHandlers.onResponderStart(event);
         };
       })(this),
       onResponderMove: (function(_this) {
         return function(event) {
           _this._shouldCapture("onMoveShouldSetResponderCapture", event);
-          return _this._activeResponder.touchHandlers.onResponderMove(event);
+          return _this._activeHandlers.onResponderMove(event);
         };
       })(this),
       onResponderEnd: (function(_this) {
         return function(event) {
-          return _this._activeResponder.touchHandlers.onResponderEnd(event);
+          return _this._activeHandlers.onResponderEnd(event);
         };
       })(this),
       onResponderRelease: (function(_this) {
         return function(event) {
-          _this._activeResponder.touchHandlers.onResponderRelease(event);
+          _this._activeHandlers.onResponderRelease(event);
           return _this._activeResponder = null;
         };
       })(this),
       onResponderTerminate: (function(_this) {
         return function(event) {
-          _this._activeResponder.touchHandlers.onResponderTerminate(event);
+          _this._activeHandlers.onResponderTerminate(event);
           return _this._activeResponder = null;
         };
       })(this),
       onResponderTerminationRequest: (function(_this) {
         return function(event) {
-          return _this._activeResponder.touchHandlers.onResponderTerminationRequest(event);
+          return _this._activeHandlers.onResponderTerminationRequest(event);
         };
       })(this)
     };

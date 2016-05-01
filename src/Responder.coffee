@@ -63,9 +63,7 @@ Responder = Factory "Gesture_Responder",
     isEnabled:
       value: yes
       reactive: yes
-      didSet: ->
-        # TODO: Does this need a ResponderSyntheticEvent?
-        @terminate()
+      didSet: -> @terminate()
 
     isActive: get: ->
       @_gesture isnt null
@@ -249,7 +247,9 @@ Responder = Factory "Gesture_Responder",
 
     onStartShouldSetResponder: (event) =>
 
-      if Responder.capturedResponder # This event falsely fires when a second touch starts and 'capturedResponder' is already set.
+      # This event falsely fires when a second touch
+      # starts and 'capturedResponder' is already set.
+      if Responder.capturedResponder
         return no
 
       if touchHistory.numberActiveTouches < @minTouchCount
@@ -264,6 +264,8 @@ Responder = Factory "Gesture_Responder",
 
       return @__shouldRespondOnStart()
 
+    # TODO: Never try capturing if capturing was ever prevented
+    #       because of `isEnabled` being false.
     onMoveShouldSetResponder: =>
 
       if touchHistory.numberActiveTouches < @minTouchCount
