@@ -1,59 +1,54 @@
 
-{ ArrayOf
-  isType
-  isKind
-  assertType } = require "type-utils"
+{ Void, assertType } = require "type-utils"
 
-ResponderSyntheticEvent = require "ResponderSyntheticEvent"
-Factory = require "factory"
 sync = require "sync"
+Type = require "Type"
 
 Responder = require "./Responder"
 
-module.exports = Factory "Gesture_ResponderList",
+type = Type "ResponderList"
 
-  initArguments: (responders) ->
-    assertType responders, ArrayOf [ Responder.Kind, Void ]
-    responders = sync.filter responders, (responder) -> isKind responder, Responder
-    [ responders ]
+type.createArguments (args) ->
+  assertType args[0], Array
+  args[0] = sync.filter args[0], (responder) -> responder instanceof Responder
+  return args
 
-  getFromCache: (responders) ->
-    return null if responders.length is 0
-    return responders[0] if responders.length is 1
+type.returnExisting (responders) ->
+  return null if responders.length is 0
+  return responders[0] if responders.length is 1
 
-  customValues:
+type.defineProperties
 
-    touchHandlers: lazy: ->
-      @_createMixin()
+  touchHandlers: lazy: ->
+    @_createMixin()
 
-    _activeHandlers: get: ->
-      @_activeResponder.touchHandlers
+type.defineFrozenValues
 
-  initFrozenValues: (responders) ->
+  _responders: (responders) -> responders
 
-    _responders: responders
+type.defineValues
 
-  initValues: ->
+  _activeResponder: null
 
-    _activeResponder: null
+type.defineMethods
 
   _setActiveResponder: (responder, event) ->
     assertType responder, Responder.Kind
     unless @_activeResponder
       @_activeResponder = responder
       return yes
-    unless @_activeHandlers.onResponderTerminationRequest event
+    unless @_onResponderTerminationRequest event
       responder.touchHandlers.onResponderReject? event
       return no
-    @_activeHandlers.onResponderTerminate event
+    @_onResponderTerminate event
     @_activeResponder = responder
-    @_activeHandlers.onResponderGrant event
+    @_onResponderGrant event
     return yes
 
   _shouldRespond: (phase, event) ->
     assert @_activeResponder is null
     shouldRespond = no
-    sync.search @_responders, (responder) =>
+    sync.search @_responders, (responder) ->
       return yes unless responder.touchHandlers[phase] event
       shouldRespond = @_setActiveResponder responder, event
       return no
@@ -61,7 +56,7 @@ module.exports = Factory "Gesture_ResponderList",
 
   _shouldCapture: (phase, event) ->
     shouldCapture = no
-    sync.searchFromEnd @_responders, (responder) =>
+    sync.searchFromEnd @_responders, (responder) ->
       return no if responder is @_activeResponder
       return yes unless responder.touchHandlers[phase] event
       shouldCapture = @_setActiveResponder responder, event
@@ -89,29 +84,30 @@ module.exports = Factory "Gesture_ResponderList",
       @_shouldCapture "onEndShouldSetResponderCapture", event
 
     onResponderReject: (event) =>
-      @_activeHandlers.onResponderReject event
+      @_activeResponder.touchHandlers.onResponderReject event
 
     onResponderGrant: (event) =>
-      @_activeHandlers.onResponderGrant event
+      @_activeResponder.touchHandlers.onResponderGrant event
 
     onResponderStart: (event) =>
-      @_activeHandlers.onResponderStart event
+      @_activeResponder.touchHandlers.onResponderStart event
 
     onResponderMove: (event) =>
-      # Allow a responder in this ResponderList to become active.
-      @_shouldCapture "onMoveShouldSetResponderCapture", event
-      @_activeHandlers.onResponderMove event
+      @_onMoveShouldSetResponderCapture event
+      @_activeResponder.touchHandlers.onResponderMove event
 
     onResponderEnd: (event) =>
-      @_activeHandlers.onResponderEnd event
+      @_activeResponder.touchHandlers.onResponderEnd event
 
     onResponderRelease: (event) =>
-      @_activeHandlers.onResponderRelease event
+      @_activeResponder.touchHandlers.onResponderRelease event
       @_activeResponder = null
 
     onResponderTerminate: (event) =>
-      @_activeHandlers.onResponderTerminate event
+      @_activeResponder.touchHandlers.onResponderTerminate event
       @_activeResponder = null
 
     onResponderTerminationRequest: (event) =>
-      @_activeHandlers.onResponderTerminationRequest event
+      @_activeResponder.touchHandlers.onResponderTerminationRequest event
+
+module.exports = type.build()
