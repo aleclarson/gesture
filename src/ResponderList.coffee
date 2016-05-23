@@ -1,6 +1,4 @@
 
-{ Void, assertType } = require "type-utils"
-
 sync = require "sync"
 Type = require "Type"
 
@@ -8,8 +6,10 @@ Responder = require "./Responder"
 
 type = Type "ResponderList"
 
-type.createArguments (args) ->
-  assertType args[0], Array
+type.argumentTypes =
+  responders: Array
+
+type.initArguments (args) ->
   args[0] = sync.filter args[0], (responder) -> responder instanceof Responder
   return args
 

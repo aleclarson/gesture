@@ -1,6 +1,4 @@
-var Responder, Type, Void, assertType, ref, sync, type;
-
-ref = require("type-utils"), Void = ref.Void, assertType = ref.assertType;
+var Responder, Type, sync, type;
 
 sync = require("sync");
 
@@ -10,8 +8,11 @@ Responder = require("./Responder");
 
 type = Type("ResponderList");
 
-type.createArguments(function(args) {
-  assertType(args[0], Array);
+type.argumentTypes = {
+  responders: Array
+};
+
+type.initArguments(function(args) {
   args[0] = sync.filter(args[0], function(responder) {
     return responder instanceof Responder;
   });

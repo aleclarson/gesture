@@ -2,11 +2,11 @@ var Event, Gesture, Responder, ResponderEventPlugin, Type, assertType, emptyFunc
 
 touchHistory = require("ResponderTouchHistoryStore").touchHistory;
 
-assertType = require("type-utils").assertType;
-
 ResponderEventPlugin = require("ResponderEventPlugin");
 
 emptyFunction = require("emptyFunction");
+
+assertType = require("assertType");
 
 Event = require("event");
 

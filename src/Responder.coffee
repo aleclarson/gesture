@@ -2,10 +2,10 @@
 # TODO: Implement 'minTouchCount' and 'maxTouchCount'.
 
 { touchHistory } = require "ResponderTouchHistoryStore"
-{ assertType } = require "type-utils"
 
 ResponderEventPlugin = require "ResponderEventPlugin"
 emptyFunction = require "emptyFunction"
+assertType = require "assertType"
 Event = require "event"
 Type = require "Type"
 hook = require "hook"
