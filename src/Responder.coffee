@@ -6,18 +6,13 @@
 ResponderEventPlugin = require "ResponderEventPlugin"
 emptyFunction = require "emptyFunction"
 assertType = require "assertType"
+getArgProp = require "getArgProp"
+assert = require "assert"
 Event = require "event"
 Type = require "Type"
 hook = require "hook"
 
 Gesture = require "./Gesture"
-
-hook.before ResponderEventPlugin, "onFinalTouch", (event) ->
-  responders = Responder.activeResponders
-  return if responders.length is 0
-  for responder in responders
-    responder.terminate event, yes
-  responders.length = 0
 
 type = Type "Responder"
 
@@ -104,19 +99,19 @@ type.defineFrozenValues
 
 type.defineValues
 
-  _shouldRespondOnStart: (options) -> options.shouldRespondOnStart
+  _shouldRespondOnStart: getArgProp "shouldRespondOnStart"
 
-  _shouldRespondOnMove: (options) -> options.shouldRespondOnMove
+  _shouldRespondOnMove: getArgProp "shouldRespondOnMove"
 
-  _shouldRespondOnEnd: (options) -> options.shouldRespondOnEnd
+  _shouldRespondOnEnd: getArgProp "shouldRespondOnEnd"
 
-  _shouldCaptureOnStart: (options) -> options.shouldCaptureOnStart
+  _shouldCaptureOnStart: getArgProp "shouldCaptureOnStart"
 
-  _shouldCaptureOnMove: (options) -> options.shouldCaptureOnMove
+  _shouldCaptureOnMove: getArgProp "shouldCaptureOnMove"
 
-  _shouldCaptureOnEnd: (options) -> options.shouldCaptureOnEnd
+  _shouldCaptureOnEnd: getArgProp "shouldCaptureOnEnd"
 
-  _shouldTerminate: (options) -> options.shouldTerminate
+  _shouldTerminate: getArgProp "shouldTerminate"
 
 type.defineMethods
 
@@ -181,6 +176,7 @@ type.defineMethods
   __onRelease: (event) ->
     @_gesture.__onEnd yes, event
     @didEnd.emit @_gesture, event
+    return
 
   __onTerminate: (event) ->
     @_gesture.__onEnd no, event
@@ -197,7 +193,8 @@ type.defineMethods
 
   _createGesture: (event) ->
     return if @_gesture
-    @_gesture = @__createGesture { event }
+    { pageX, pageY } = event.nativeEvent
+    @_gesture = @__createGesture { x: pageX, y: pageY }
     @_setActive yes
     assertType @_gesture, Gesture.Kind
 
@@ -338,9 +335,19 @@ type.defineMethods
       @_setActive no
 
     # Must return false to block the capturing responder.
-    # responder must capture before receiving this event.
+    # Responder must capture before receiving this event.
     onResponderTerminationRequest: (event) =>
       return yes unless @_gesture
       return @__onTerminationRequest event
 
 module.exports = Responder = type.build()
+
+# Since only the 'capturedResponder' receives the
+# last 'onTouchEnd' event, we need to hook into
+# 'ResponderEventPlugin' to help out the 'activeResponders'.
+hook.before ResponderEventPlugin, "onFinalTouch", (event) ->
+  responders = Responder.activeResponders
+  return if responders.length is 0
+  for responder in responders
+    responder.terminate event, yes
+  responders.length = 0

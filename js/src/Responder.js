@@ -1,4 +1,4 @@
-var Event, Gesture, Responder, ResponderEventPlugin, Type, assertType, emptyFunction, hook, touchHistory, type;
+var Event, Gesture, Responder, ResponderEventPlugin, Type, assert, assertType, emptyFunction, getArgProp, hook, touchHistory, type;
 
 touchHistory = require("ResponderTouchHistoryStore").touchHistory;
 
@@ -8,6 +8,10 @@ emptyFunction = require("emptyFunction");
 
 assertType = require("assertType");
 
+getArgProp = require("getArgProp");
+
+assert = require("assert");
+
 Event = require("event");
 
 Type = require("Type");
@@ -15,19 +19,6 @@ Type = require("Type");
 hook = require("hook");
 
 Gesture = require("./Gesture");
-
-hook.before(ResponderEventPlugin, "onFinalTouch", function(event) {
-  var i, len, responder, responders;
-  responders = Responder.activeResponders;
-  if (responders.length === 0) {
-    return;
-  }
-  for (i = 0, len = responders.length; i < len; i++) {
-    responder = responders[i];
-    responder.terminate(event, true);
-  }
-  return responders.length = 0;
-});
 
 type = Type("Responder");
 
@@ -126,27 +117,13 @@ type.defineFrozenValues({
 });
 
 type.defineValues({
-  _shouldRespondOnStart: function(options) {
-    return options.shouldRespondOnStart;
-  },
-  _shouldRespondOnMove: function(options) {
-    return options.shouldRespondOnMove;
-  },
-  _shouldRespondOnEnd: function(options) {
-    return options.shouldRespondOnEnd;
-  },
-  _shouldCaptureOnStart: function(options) {
-    return options.shouldCaptureOnStart;
-  },
-  _shouldCaptureOnMove: function(options) {
-    return options.shouldCaptureOnMove;
-  },
-  _shouldCaptureOnEnd: function(options) {
-    return options.shouldCaptureOnEnd;
-  },
-  _shouldTerminate: function(options) {
-    return options.shouldTerminate;
-  }
+  _shouldRespondOnStart: getArgProp("shouldRespondOnStart"),
+  _shouldRespondOnMove: getArgProp("shouldRespondOnMove"),
+  _shouldRespondOnEnd: getArgProp("shouldRespondOnEnd"),
+  _shouldCaptureOnStart: getArgProp("shouldCaptureOnStart"),
+  _shouldCaptureOnMove: getArgProp("shouldCaptureOnMove"),
+  _shouldCaptureOnEnd: getArgProp("shouldCaptureOnEnd"),
+  _shouldTerminate: getArgProp("shouldTerminate")
 });
 
 type.defineMethods({
@@ -210,7 +187,7 @@ type.defineMethods({
   },
   __onRelease: function(event) {
     this._gesture.__onEnd(true, event);
-    return this.didEnd.emit(this._gesture, event);
+    this.didEnd.emit(this._gesture, event);
   },
   __onTerminate: function(event) {
     this._gesture.__onEnd(false, event);
@@ -232,11 +209,14 @@ type.defineMethods({
     }
   },
   _createGesture: function(event) {
+    var pageX, pageY, ref;
     if (this._gesture) {
       return;
     }
+    ref = event.nativeEvent, pageX = ref.pageX, pageY = ref.pageY;
     this._gesture = this.__createGesture({
-      event: event
+      x: pageX,
+      y: pageY
     });
     this._setActive(true);
     return assertType(this._gesture, Gesture.Kind);
@@ -408,5 +388,18 @@ type.defineMethods({
 });
 
 module.exports = Responder = type.build();
+
+hook.before(ResponderEventPlugin, "onFinalTouch", function(event) {
+  var i, len, responder, responders;
+  responders = Responder.activeResponders;
+  if (responders.length === 0) {
+    return;
+  }
+  for (i = 0, len = responders.length; i < len; i++) {
+    responder = responders[i];
+    responder.terminate(event, true);
+  }
+  return responders.length = 0;
+});
 
 //# sourceMappingURL=../../map/src/Responder.map
