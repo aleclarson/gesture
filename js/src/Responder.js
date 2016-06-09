@@ -44,8 +44,8 @@ type.optionDefaults = {
 
 type.defineStatics({
   activeResponders: [],
-  capturedResponder: null,
-  didResponderCapture: Event()
+  grantedResponder: null,
+  didResponderGrant: Event()
 });
 
 type.defineProperties({
@@ -66,9 +66,9 @@ type.defineProperties({
       return this._gesture !== null;
     }
   },
-  isCaptured: {
+  isGranted: {
     get: function() {
-      return this._isCaptured;
+      return this._isGranted;
     }
   },
   gesture: {
@@ -80,7 +80,7 @@ type.defineProperties({
     value: null,
     reactive: true
   },
-  _isCaptured: {
+  _isGranted: {
     value: false,
     reactive: true,
     didSet: function(newValue, oldValue) {
@@ -89,8 +89,8 @@ type.defineProperties({
         return;
       }
       responder = newValue ? this : null;
-      Responder.capturedResponder = responder;
-      return Responder.didResponderCapture.emit(responder);
+      Responder.grantedResponder = responder;
+      return Responder.didResponderGrant.emit(responder);
     }
   }
 });
@@ -132,7 +132,7 @@ type.defineMethods({
       return;
     }
     this.__onTouchEnd(event, 0);
-    if (this.isCaptured) {
+    if (this.isGranted) {
       if (finished === true) {
         this.__onRelease(event);
       } else {
@@ -223,7 +223,7 @@ type.defineMethods({
   },
   _deleteGesture: function() {
     assert(this.isActive, "Gesture not yet created!");
-    this._isCaptured = false;
+    this._isGranted = false;
     return this._gesture = null;
   },
   _onTouchStart: function(event, touchCount) {
@@ -347,13 +347,13 @@ type.defineMethods({
       })(this),
       onResponderGrant: (function(_this) {
         return function(event) {
-          if (!_this.isCaptured) {
-            assert(Responder.capturedResponder === null, {
-              reason: "The `capturedResponder` must be null before it can be set to a new Responder!",
+          if (!_this.isGranted) {
+            assert(Responder.grantedResponder === null, {
+              reason: "The `grantedResponder` must be null before it can be set to a new Responder!",
               failedResponder: _this,
-              capturedResponder: Responder.capturedResponder
+              grantedResponder: Responder.grantedResponder
             });
-            _this._isCaptured = true;
+            _this._isGranted = true;
             _this.__onGrant(event);
           }
           return true;

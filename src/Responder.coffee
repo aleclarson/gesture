@@ -44,10 +44,10 @@ type.defineStatics
   activeResponders: []
 
   # The responder that most recently claimed to the active touch.
-  capturedResponder: null
+  grantedResponder: null
 
-  # Emits when the `capturedResponder` has a new value!
-  didResponderCapture: Event()
+  # Emits when the `grantedResponder` has a new value!
+  didResponderGrant: Event()
 
 type.defineProperties
 
@@ -64,8 +64,8 @@ type.defineProperties
   isActive: get: ->
     @_gesture isnt null
 
-  isCaptured: get: ->
-    @_isCaptured
+  isGranted: get: ->
+    @_isGranted
 
   gesture: get: ->
     @_gesture
@@ -74,14 +74,14 @@ type.defineProperties
     value: null
     reactive: yes
 
-  _isCaptured:
+  _isGranted:
     value: no
     reactive: yes
     didSet: (newValue, oldValue) ->
       return if newValue is oldValue
       responder = if newValue then this else null
-      Responder.capturedResponder = responder
-      Responder.didResponderCapture.emit responder
+      Responder.grantedResponder = responder
+      Responder.didResponderGrant.emit responder
 
 type.defineFrozenValues
 
@@ -121,7 +121,7 @@ type.defineMethods
 
     @__onTouchEnd event, 0
 
-    if @isCaptured
+    if @isGranted
       if finished is yes then @__onRelease event
       else @__onTerminate event
 
@@ -200,7 +200,7 @@ type.defineMethods
 
   _deleteGesture: ->
     assert @isActive, "Gesture not yet created!"
-    @_isCaptured = no
+    @_isGranted = no
     @_gesture = null
 
   _onTouchStart: (event, touchCount) ->
@@ -275,28 +275,28 @@ type.defineMethods
       return @__shouldCaptureOnEnd event
 
     # Called for every new finger that touches the screen.
-    # Batches simultaneous events.
-    # Responder does NOT need to capture before receiving this event.
+    # Called even when not the `grantedResponder`.
+    # Simultaneous events are batched.
     onResponderStart: (event) =>
       return unless @__canUpdate()
       @_onTouchStart event, touchHistory.numberActiveTouches
 
     # Called for every finger that moves.
-    # Batches simultaneous events.
-    # Responder does NOT need to capture before receiving this event.
+    # Called even when not the `grantedResponder`.
+    # Simultaneous events are batched.
     onResponderMove: (event) =>
       return unless @__canUpdate()
       @_onTouchMove event, touchHistory.numberActiveTouches
 
     # Called for every finger that stops touching the screen.
-    # Batches simultaneous events.
-    # Responder does NOT need to capture before receiving this event.
+    # Called even when not the `grantedResponder`.
+    # Simultaneous events are batched.
     onResponderEnd: (event) =>
       return unless @__canUpdate()
       @_onTouchEnd event, touchHistory.numberActiveTouches
 
     # This must be implemented in case the
-    # `capturedResponder` rejects a termination request.
+    # `grantedResponder` rejects a termination request.
     onResponderReject: (event) =>
       return unless @__canUpdate()
       @__onReject event
@@ -304,14 +304,14 @@ type.defineMethods
     # Must return true if native responders should be blocked.
     onResponderGrant: (event) =>
 
-      unless @isCaptured
+      unless @isGranted
 
-        assert Responder.capturedResponder is null,
-          reason: "The `capturedResponder` must be null before it can be set to a new Responder!"
+        assert Responder.grantedResponder is null,
+          reason: "The `grantedResponder` must be null before it can be set to a new Responder!"
           failedResponder: this
-          capturedResponder: Responder.capturedResponder
+          grantedResponder: Responder.grantedResponder
 
-        @_isCaptured = yes
+        @_isGranted = yes
         @__onGrant event
 
       return yes
@@ -335,14 +335,14 @@ type.defineMethods
       @_setActive no
 
     # Must return false to block the capturing responder.
-    # Responder must capture before receiving this event.
+    # Must be the 'grantedResponder' before receiving this event.
     onResponderTerminationRequest: (event) =>
       return yes unless @_gesture
       return @__onTerminationRequest event
 
 module.exports = Responder = type.build()
 
-# Since only the 'capturedResponder' receives the
+# Since only the 'grantedResponder' receives the
 # last 'onTouchEnd' event, we need to hook into
 # 'ResponderEventPlugin' to help out the 'activeResponders'.
 hook.before ResponderEventPlugin, "onFinalTouch", (event) ->
