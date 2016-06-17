@@ -6,7 +6,7 @@ touchHistory = require("ResponderTouchHistoryStore").touchHistory;
 
 ResponderSyntheticEvent = require("ResponderSyntheticEvent");
 
-LazyVar = require("lazy-var");
+LazyVar = require("LazyVar");
 
 assert = require("assert");
 

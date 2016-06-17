@@ -12,7 +12,7 @@ getArgProp = require("getArgProp");
 
 assert = require("assert");
 
-Event = require("event");
+Event = require("Event");
 
 Type = require("Type");
 

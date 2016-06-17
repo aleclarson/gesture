@@ -3,7 +3,7 @@
 { touchHistory } = require "ResponderTouchHistoryStore"
 
 ResponderSyntheticEvent = require "ResponderSyntheticEvent"
-LazyVar = require "lazy-var"
+LazyVar = require "LazyVar"
 assert = require "assert"
 Type = require "Type"
 
@@ -153,9 +153,10 @@ type.defineMethods
 
     assert touchCount >= 0, "Invalid touch count!"
     @touchCount = touchCount
-    return if touchCount is 0
 
+    return if touchCount is 0
     return unless @canUpdate
+
     @_updateTime()
     @_updateCentroid()
 

@@ -8,7 +8,7 @@ emptyFunction = require "emptyFunction"
 assertType = require "assertType"
 getArgProp = require "getArgProp"
 assert = require "assert"
-Event = require "event"
+Event = require "Event"
 Type = require "Type"
 hook = require "hook"
 
@@ -295,8 +295,8 @@ type.defineMethods
       return unless @__canUpdate()
       @_onTouchEnd event, touchHistory.numberActiveTouches
 
-    # This must be implemented in case the
-    # `grantedResponder` rejects a termination request.
+    # This must be implemented in case the `grantedResponder`
+    # returns false in its `shouldTerminate` callback.
     onResponderReject: (event) =>
       return unless @__canUpdate()
       @__onReject event
