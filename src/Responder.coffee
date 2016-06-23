@@ -3,6 +3,7 @@
 
 { touchHistory } = require "ResponderTouchHistoryStore"
 
+ResponderSyntheticEvent = require "ResponderSyntheticEvent"
 ResponderEventPlugin = require "ResponderEventPlugin"
 emptyFunction = require "emptyFunction"
 assertType = require "assertType"
@@ -14,29 +15,49 @@ hook = require "hook"
 
 Gesture = require "./Gesture"
 
+TouchEvent =
+  gesture: Gesture.Kind
+  event: [ ResponderSyntheticEvent ]
+
 type = Type "Responder"
 
-type.optionTypes =
-  # minTouchCount: Number
-  # maxTouchCount: Number
-  shouldRespondOnStart: Function
-  shouldRespondOnMove: Function
-  shouldRespondOnEnd: Function
-  shouldCaptureOnStart: Function
-  shouldCaptureOnMove: Function
-  shouldCaptureOnEnd: Function
-  shouldTerminate: Function
+type.defineOptions
 
-type.optionDefaults =
-  # minTouchCount: 1
-  # maxTouchCount: Infinity
-  shouldRespondOnStart: emptyFunction.thatReturnsTrue
-  shouldRespondOnMove: emptyFunction.thatReturnsFalse
-  shouldRespondOnEnd: emptyFunction.thatReturnsFalse
-  shouldCaptureOnStart: emptyFunction.thatReturnsFalse
-  shouldCaptureOnMove: emptyFunction.thatReturnsFalse
-  shouldCaptureOnEnd: emptyFunction.thatReturnsFalse
-  shouldTerminate: emptyFunction.thatReturnsTrue
+  # minTouchCount:
+  #   type: Number
+  #   default: 1
+  #
+  # maxTouchCount:
+  #   type: Number
+  #   default: Infinity
+
+  shouldRespondOnStart:
+    type: Function
+    default: emptyFunction.thatReturnsTrue
+
+  shouldRespondOnMove:
+    type: Function
+    default: emptyFunction.thatReturnsFalse
+
+  shouldRespondOnEnd:
+    type: Function
+    default: emptyFunction.thatReturnsFalse
+
+  shouldCaptureOnStart:
+    type: Function
+    default: emptyFunction.thatReturnsFalse
+
+  shouldCaptureOnMove:
+    type: Function
+    default: emptyFunction.thatReturnsFalse
+
+  shouldCaptureOnEnd:
+    type: Function
+    default: emptyFunction.thatReturnsFalse
+
+  shouldTerminate:
+    type: Function
+    default: emptyFunction.thatReturnsTrue
 
 type.defineStatics
 
@@ -83,20 +104,6 @@ type.defineProperties
       Responder.grantedResponder = responder
       Responder.didResponderGrant.emit responder
 
-type.defineFrozenValues
-
-  didReject: -> Event()
-
-  didGrant: -> Event()
-
-  didEnd: -> Event()
-
-  didTouchStart: -> Event()
-
-  didTouchMove: -> Event()
-
-  didTouchEnd: -> Event()
-
 type.defineValues
 
   _shouldRespondOnStart: getArgProp "shouldRespondOnStart"
@@ -112,6 +119,26 @@ type.defineValues
   _shouldCaptureOnEnd: getArgProp "shouldCaptureOnEnd"
 
   _shouldTerminate: getArgProp "shouldTerminate"
+
+type.defineEvents
+
+  didReject:
+    types: TouchEvent
+
+  didGrant:
+    types: TouchEvent
+
+  didEnd:
+    types: TouchEvent
+
+  didTouchStart:
+    types: TouchEvent
+
+  didTouchMove:
+    types: TouchEvent
+
+  didTouchEnd:
+    types: TouchEvent
 
 type.defineMethods
 
@@ -155,32 +182,32 @@ type.defineMethods
 
   __onTouchStart: (event, touchCount) ->
     @_gesture.__onTouchStart event, touchCount
-    @didTouchStart.emit @_gesture, event
+    @_events.emit "didTouchStart", [ @_gesture, event ]
 
   __onTouchMove: (event) ->
     @_gesture.__onTouchMove event
-    @didTouchMove.emit @_gesture, event
+    @_events.emit "didTouchMove", [ @_gesture, event ]
 
   __onTouchEnd: (event, touchCount) ->
     @_gesture.__onTouchEnd event, touchCount
-    @didTouchEnd.emit @_gesture, event
+    @_events.emit "didTouchEnd", [ @_gesture, event ]
 
   __onReject: (event) ->
     @_gesture.__onReject event
-    @didReject.emit @_gesture, event
+    @_events.emit "didReject", [ @_gesture, event ]
 
   __onGrant: (event) ->
     @_gesture.__onGrant event
-    @didGrant.emit @_gesture, event
+    @_events.emit "didGrant", [ @_gesture, event ]
 
   __onRelease: (event) ->
     @_gesture.__onEnd yes, event
-    @didEnd.emit @_gesture, event
+    @_events.emit "didEnd", [ @_gesture, event ]
     return
 
   __onTerminate: (event) ->
     @_gesture.__onEnd no, event
-    @didEnd.emit @_gesture, event
+    @_events.emit "didEnd", [ @_gesture, event ]
 
   __onTerminationRequest: (event) ->
     return yes unless @_gesture

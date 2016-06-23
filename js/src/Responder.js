@@ -1,6 +1,8 @@
-var Event, Gesture, Responder, ResponderEventPlugin, Type, assert, assertType, emptyFunction, getArgProp, hook, touchHistory, type;
+var Event, Gesture, Responder, ResponderEventPlugin, ResponderSyntheticEvent, TouchEvent, Type, assert, assertType, emptyFunction, getArgProp, hook, touchHistory, type;
 
 touchHistory = require("ResponderTouchHistoryStore").touchHistory;
+
+ResponderSyntheticEvent = require("ResponderSyntheticEvent");
 
 ResponderEventPlugin = require("ResponderEventPlugin");
 
@@ -20,27 +22,43 @@ hook = require("hook");
 
 Gesture = require("./Gesture");
 
+TouchEvent = {
+  gesture: Gesture.Kind,
+  event: [ResponderSyntheticEvent]
+};
+
 type = Type("Responder");
 
-type.optionTypes = {
-  shouldRespondOnStart: Function,
-  shouldRespondOnMove: Function,
-  shouldRespondOnEnd: Function,
-  shouldCaptureOnStart: Function,
-  shouldCaptureOnMove: Function,
-  shouldCaptureOnEnd: Function,
-  shouldTerminate: Function
-};
-
-type.optionDefaults = {
-  shouldRespondOnStart: emptyFunction.thatReturnsTrue,
-  shouldRespondOnMove: emptyFunction.thatReturnsFalse,
-  shouldRespondOnEnd: emptyFunction.thatReturnsFalse,
-  shouldCaptureOnStart: emptyFunction.thatReturnsFalse,
-  shouldCaptureOnMove: emptyFunction.thatReturnsFalse,
-  shouldCaptureOnEnd: emptyFunction.thatReturnsFalse,
-  shouldTerminate: emptyFunction.thatReturnsTrue
-};
+type.defineOptions({
+  shouldRespondOnStart: {
+    type: Function,
+    "default": emptyFunction.thatReturnsTrue
+  },
+  shouldRespondOnMove: {
+    type: Function,
+    "default": emptyFunction.thatReturnsFalse
+  },
+  shouldRespondOnEnd: {
+    type: Function,
+    "default": emptyFunction.thatReturnsFalse
+  },
+  shouldCaptureOnStart: {
+    type: Function,
+    "default": emptyFunction.thatReturnsFalse
+  },
+  shouldCaptureOnMove: {
+    type: Function,
+    "default": emptyFunction.thatReturnsFalse
+  },
+  shouldCaptureOnEnd: {
+    type: Function,
+    "default": emptyFunction.thatReturnsFalse
+  },
+  shouldTerminate: {
+    type: Function,
+    "default": emptyFunction.thatReturnsTrue
+  }
+});
 
 type.defineStatics({
   activeResponders: [],
@@ -95,27 +113,6 @@ type.defineProperties({
   }
 });
 
-type.defineFrozenValues({
-  didReject: function() {
-    return Event();
-  },
-  didGrant: function() {
-    return Event();
-  },
-  didEnd: function() {
-    return Event();
-  },
-  didTouchStart: function() {
-    return Event();
-  },
-  didTouchMove: function() {
-    return Event();
-  },
-  didTouchEnd: function() {
-    return Event();
-  }
-});
-
 type.defineValues({
   _shouldRespondOnStart: getArgProp("shouldRespondOnStart"),
   _shouldRespondOnMove: getArgProp("shouldRespondOnMove"),
@@ -124,6 +121,27 @@ type.defineValues({
   _shouldCaptureOnMove: getArgProp("shouldCaptureOnMove"),
   _shouldCaptureOnEnd: getArgProp("shouldCaptureOnEnd"),
   _shouldTerminate: getArgProp("shouldTerminate")
+});
+
+type.defineEvents({
+  didReject: {
+    types: TouchEvent
+  },
+  didGrant: {
+    types: TouchEvent
+  },
+  didEnd: {
+    types: TouchEvent
+  },
+  didTouchStart: {
+    types: TouchEvent
+  },
+  didTouchMove: {
+    types: TouchEvent
+  },
+  didTouchEnd: {
+    types: TouchEvent
+  }
 });
 
 type.defineMethods({
@@ -167,31 +185,31 @@ type.defineMethods({
   },
   __onTouchStart: function(event, touchCount) {
     this._gesture.__onTouchStart(event, touchCount);
-    return this.didTouchStart.emit(this._gesture, event);
+    return this._events.emit("didTouchStart", [this._gesture, event]);
   },
   __onTouchMove: function(event) {
     this._gesture.__onTouchMove(event);
-    return this.didTouchMove.emit(this._gesture, event);
+    return this._events.emit("didTouchMove", [this._gesture, event]);
   },
   __onTouchEnd: function(event, touchCount) {
     this._gesture.__onTouchEnd(event, touchCount);
-    return this.didTouchEnd.emit(this._gesture, event);
+    return this._events.emit("didTouchEnd", [this._gesture, event]);
   },
   __onReject: function(event) {
     this._gesture.__onReject(event);
-    return this.didReject.emit(this._gesture, event);
+    return this._events.emit("didReject", [this._gesture, event]);
   },
   __onGrant: function(event) {
     this._gesture.__onGrant(event);
-    return this.didGrant.emit(this._gesture, event);
+    return this._events.emit("didGrant", [this._gesture, event]);
   },
   __onRelease: function(event) {
     this._gesture.__onEnd(true, event);
-    this.didEnd.emit(this._gesture, event);
+    this._events.emit("didEnd", [this._gesture, event]);
   },
   __onTerminate: function(event) {
     this._gesture.__onEnd(false, event);
-    return this.didEnd.emit(this._gesture, event);
+    return this._events.emit("didEnd", [this._gesture, event]);
   },
   __onTerminationRequest: function(event) {
     if (!this._gesture) {
