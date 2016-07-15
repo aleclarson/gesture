@@ -7,7 +7,7 @@ ResponderSyntheticEvent = require "ResponderSyntheticEvent"
 ResponderEventPlugin = require "ResponderEventPlugin"
 emptyFunction = require "emptyFunction"
 assertType = require "assertType"
-getArgProp = require "getArgProp"
+fromArgs = require "fromArgs"
 assert = require "assert"
 Event = require "Event"
 Type = require "Type"
@@ -106,19 +106,19 @@ type.defineProperties
 
 type.defineValues
 
-  _shouldRespondOnStart: getArgProp "shouldRespondOnStart"
+  _shouldRespondOnStart: fromArgs "shouldRespondOnStart"
 
-  _shouldRespondOnMove: getArgProp "shouldRespondOnMove"
+  _shouldRespondOnMove: fromArgs "shouldRespondOnMove"
 
-  _shouldRespondOnEnd: getArgProp "shouldRespondOnEnd"
+  _shouldRespondOnEnd: fromArgs "shouldRespondOnEnd"
 
-  _shouldCaptureOnStart: getArgProp "shouldCaptureOnStart"
+  _shouldCaptureOnStart: fromArgs "shouldCaptureOnStart"
 
-  _shouldCaptureOnMove: getArgProp "shouldCaptureOnMove"
+  _shouldCaptureOnMove: fromArgs "shouldCaptureOnMove"
 
-  _shouldCaptureOnEnd: getArgProp "shouldCaptureOnEnd"
+  _shouldCaptureOnEnd: fromArgs "shouldCaptureOnEnd"
 
-  _shouldTerminate: getArgProp "shouldTerminate"
+  _shouldTerminate: fromArgs "shouldTerminate"
 
 type.defineEvents
 

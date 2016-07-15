@@ -1,4 +1,4 @@
-var Event, Gesture, Responder, ResponderEventPlugin, ResponderSyntheticEvent, TouchEvent, Type, assert, assertType, emptyFunction, getArgProp, hook, touchHistory, type;
+var Event, Gesture, Responder, ResponderEventPlugin, ResponderSyntheticEvent, TouchEvent, Type, assert, assertType, emptyFunction, fromArgs, hook, touchHistory, type;
 
 touchHistory = require("ResponderTouchHistoryStore").touchHistory;
 
@@ -10,7 +10,7 @@ emptyFunction = require("emptyFunction");
 
 assertType = require("assertType");
 
-getArgProp = require("getArgProp");
+fromArgs = require("fromArgs");
 
 assert = require("assert");
 
@@ -114,13 +114,13 @@ type.defineProperties({
 });
 
 type.defineValues({
-  _shouldRespondOnStart: getArgProp("shouldRespondOnStart"),
-  _shouldRespondOnMove: getArgProp("shouldRespondOnMove"),
-  _shouldRespondOnEnd: getArgProp("shouldRespondOnEnd"),
-  _shouldCaptureOnStart: getArgProp("shouldCaptureOnStart"),
-  _shouldCaptureOnMove: getArgProp("shouldCaptureOnMove"),
-  _shouldCaptureOnEnd: getArgProp("shouldCaptureOnEnd"),
-  _shouldTerminate: getArgProp("shouldTerminate")
+  _shouldRespondOnStart: fromArgs("shouldRespondOnStart"),
+  _shouldRespondOnMove: fromArgs("shouldRespondOnMove"),
+  _shouldRespondOnEnd: fromArgs("shouldRespondOnEnd"),
+  _shouldCaptureOnStart: fromArgs("shouldCaptureOnStart"),
+  _shouldCaptureOnMove: fromArgs("shouldCaptureOnMove"),
+  _shouldCaptureOnEnd: fromArgs("shouldCaptureOnEnd"),
+  _shouldTerminate: fromArgs("shouldTerminate")
 });
 
 type.defineEvents({
@@ -420,4 +420,4 @@ hook.before(ResponderEventPlugin, "onFinalTouch", function(event) {
   return responders.length = 0;
 });
 
-//# sourceMappingURL=../../map/src/Responder.map
+//# sourceMappingURL=map/Responder.map
