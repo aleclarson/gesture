@@ -174,4 +174,4 @@ type.defineMethods({
 
 module.exports = type.build();
 
-//# sourceMappingURL=../../map/src/ResponderList.map
+//# sourceMappingURL=map/ResponderList.map

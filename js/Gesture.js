@@ -201,4 +201,4 @@ type.defineStatics({
 
 module.exports = type.build();
 
-//# sourceMappingURL=../../map/src/Gesture.map
+//# sourceMappingURL=map/Gesture.map
