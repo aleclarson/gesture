@@ -1,96 +1,83 @@
 
 { currentCentroidX, currentCentroidY } = require "TouchHistoryMath"
 { touchHistory } = require "ResponderTouchHistoryStore"
-{ assert } = require "type-utils"
 
 ResponderSyntheticEvent = require "ResponderSyntheticEvent"
-LazyVar = require "lazy-var"
-Factory = require "factory"
+LazyVar = require "LazyVar"
+assert = require "assert"
+Type = require "Type"
 
-module.exports =
-Gesture = Factory "Gesture",
+type = Type "Gesture"
 
-  statics:
+type.optionTypes =
+  x: Number
+  y: Number
 
-    Responder: lazy: ->
-      require "./Responder"
+type.defineProperties
 
-    ResponderList: lazy: ->
-      require "./ResponderList"
+  isActive: get: ->
+    @finished is null
 
-  optionTypes:
-    x: Number
-    y: Number
+  canUpdate: get: ->
+    @_currentTime < touchHistory.mostRecentTimeStamp
 
-  customValues:
+type.exposeGetters [ "x0", "y0", "x", "y" ]
 
-    isActive: get: ->
-      @finished is null
+type.exposeLazyGetters [ "dx", "dy", "dt", "vx", "vy" ]
 
-    canUpdate: get: ->
-      @_currentTime < touchHistory.mostRecentTimeStamp
+type.defineFrozenValues
 
-    x0: get: -> @_x0
-    y0: get: -> @_y0
-    x: get: -> @_x
-    y: get: -> @_y
-    dx: get: -> @_dx.get()
-    dy: get: -> @_dy.get()
-    dt: get: -> @_dt.get()
-    vx: get: -> @_vx.get()
-    vy: get: -> @_vy.get()
+  _dx: -> LazyVar =>
+    @_x - @_x0
 
-  initFrozenValues: ->
+  _dy: -> LazyVar =>
+    @_y - @_y0
 
-    _dx: LazyVar =>
-      @_x - @_x0
+  _dt: -> LazyVar =>
+    @_currentTime - @_prevTime
 
-    _dy: LazyVar =>
-      @_y - @_y0
+  _vx: -> LazyVar =>
+    (@_x - @_prevX) / @_dt.get()
 
-    _dt: LazyVar =>
-      @_currentTime - @_prevTime
+  _vy: -> LazyVar =>
+    (@_y - @_prevY) / @_dt.get()
 
-    _vx: LazyVar =>
-      (@_x - @_prevX) / @_dt.get()
+type.defineValues
 
-    _vy: LazyVar =>
-      (@_y - @_prevY) / @_dt.get()
+  touchCount: -> touchHistory.numberActiveTouches
 
-  initValues: (options) ->
+  finished: null
 
-    touchCount: touchHistory.numberActiveTouches
+  _currentTime: 0
 
-    finished: null
+  _prevTime: null
 
-    _currentTime: 0
+  _x0: (options) -> options.x
 
-    _prevTime: null
+  _y0: (options) -> options.y
 
-    _x0: options.x
+  _x: (options) -> options.x
 
-    _y0: options.y
+  _y: (options) -> options.y
 
-    _x: options.x
+  _prevX: (options) -> options.x
 
-    _y: options.y
+  _prevY: (options) -> options.y
 
-    _prevX: options.x
+  _grantDX: 0
 
-    _prevY: options.y
+  _grantDY: 0
 
-    _grantDX: 0
+  _lastMoveTime: null
 
-    _grantDY: 0
+type.initInstance ->
+  @_dx.set 0
+  @_dy.set 0
+  @_dt.set 0
+  @_vx.set 0
+  @_vy.set 0
 
-    _lastMoveTime: null
-
-  init: ->
-    @_dx.set 0
-    @_dy.set 0
-    @_dt.set 0
-    @_vx.set 0
-    @_vy.set 0
+type.defineMethods
 
   _updateTime: ->
     @_prevTime = @_currentTime
@@ -136,7 +123,7 @@ Gesture = Factory "Gesture",
       @_vx.set 0
       @_vy.set 0
 
-  __onTouchStart: (touchCount) ->
+  __onTouchStart: (event, touchCount) ->
 
     assert touchCount > 0, "Invalid touch count!"
     @touchCount = touchCount
@@ -162,12 +149,23 @@ Gesture = Factory "Gesture",
     @_vx.reset()
     @_vy.reset()
 
-  __onTouchEnd: (touchCount) ->
+  __onTouchEnd: (event, touchCount) ->
 
     assert touchCount >= 0, "Invalid touch count!"
     @touchCount = touchCount
-    return if touchCount is 0
 
+    return if touchCount is 0
     return unless @canUpdate
+
     @_updateTime()
     @_updateCentroid()
+
+type.defineStatics
+
+  Responder: lazy: ->
+    require "./Responder"
+
+  ResponderList: lazy: ->
+    require "./ResponderList"
+
+module.exports = type.build()

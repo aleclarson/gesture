@@ -1,48 +1,52 @@
-var ArrayOf, Factory, Responder, ResponderSyntheticEvent, assertType, isKind, isType, ref, sync;
-
-ref = require("type-utils"), ArrayOf = ref.ArrayOf, isType = ref.isType, isKind = ref.isKind, assertType = ref.assertType;
-
-ResponderSyntheticEvent = require("ResponderSyntheticEvent");
-
-Factory = require("factory");
+var Responder, Type, sync, type;
 
 sync = require("sync");
 
+Type = require("Type");
+
 Responder = require("./Responder");
 
-module.exports = Factory("Gesture_ResponderList", {
-  initArguments: function(responders) {
-    assertType(responders, ArrayOf([Responder.Kind, Void]));
-    responders = sync.filter(responders, function(responder) {
-      return isKind(responder, Responder);
-    });
-    return [responders];
-  },
-  getFromCache: function(responders) {
-    if (responders.length === 0) {
-      return null;
+type = Type("ResponderList");
+
+type.argumentTypes = {
+  responders: Array
+};
+
+type.initArguments(function(args) {
+  args[0] = sync.filter(args[0], function(responder) {
+    return responder instanceof Responder;
+  });
+  return args;
+});
+
+type.returnExisting(function(responders) {
+  if (responders.length === 0) {
+    return null;
+  }
+  if (responders.length === 1) {
+    return responders[0];
+  }
+});
+
+type.defineProperties({
+  touchHandlers: {
+    lazy: function() {
+      return this._createMixin();
     }
-    if (responders.length === 1) {
-      return responders[0];
-    }
-  },
-  customValues: {
-    touchHandlers: {
-      lazy: function() {
-        return this._createMixin();
-      }
-    }
-  },
-  initFrozenValues: function(responders) {
-    return {
-      _responders: responders
-    };
-  },
-  initValues: function() {
-    return {
-      _activeResponder: null
-    };
-  },
+  }
+});
+
+type.defineFrozenValues({
+  _responders: function(responders) {
+    return responders;
+  }
+});
+
+type.defineValues({
+  _activeResponder: null
+});
+
+type.defineMethods({
   _setActiveResponder: function(responder, event) {
     var base;
     assertType(responder, Responder.Kind);
@@ -65,15 +69,13 @@ module.exports = Factory("Gesture_ResponderList", {
     var shouldRespond;
     assert(this._activeResponder === null);
     shouldRespond = false;
-    sync.search(this._responders, (function(_this) {
-      return function(responder) {
-        if (!responder.touchHandlers[phase](event)) {
-          return true;
-        }
-        shouldRespond = _this._setActiveResponder(responder, event);
-        return false;
-      };
-    })(this));
+    sync.search(this._responders, function(responder) {
+      if (!responder.touchHandlers[phase](event)) {
+        return true;
+      }
+      shouldRespond = this._setActiveResponder(responder, event);
+      return false;
+    });
     return shouldRespond;
   },
   _shouldCapture: function(phase, event) {
@@ -140,7 +142,7 @@ module.exports = Factory("Gesture_ResponderList", {
       })(this),
       onResponderMove: (function(_this) {
         return function(event) {
-          _this._shouldCapture("onMoveShouldSetResponderCapture", event);
+          _this._onMoveShouldSetResponderCapture(event);
           return _this._activeResponder.touchHandlers.onResponderMove(event);
         };
       })(this),
@@ -170,4 +172,6 @@ module.exports = Factory("Gesture_ResponderList", {
   }
 });
 
-//# sourceMappingURL=../../map/src/ResponderList.map
+module.exports = type.build();
+
+//# sourceMappingURL=map/ResponderList.map

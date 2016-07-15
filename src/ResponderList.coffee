@@ -1,38 +1,36 @@
 
-{ ArrayOf
-  isType
-  isKind
-  assertType } = require "type-utils"
-
-ResponderSyntheticEvent = require "ResponderSyntheticEvent"
-Factory = require "factory"
 sync = require "sync"
+Type = require "Type"
 
 Responder = require "./Responder"
 
-module.exports = Factory "Gesture_ResponderList",
+type = Type "ResponderList"
 
-  initArguments: (responders) ->
-    assertType responders, ArrayOf [ Responder.Kind, Void ]
-    responders = sync.filter responders, (responder) -> isKind responder, Responder
-    [ responders ]
+type.argumentTypes =
+  responders: Array
 
-  getFromCache: (responders) ->
-    return null if responders.length is 0
-    return responders[0] if responders.length is 1
+type.initArguments (args) ->
+  args[0] = sync.filter args[0], (responder) -> responder instanceof Responder
+  return args
 
-  customValues:
+type.returnExisting (responders) ->
+  return null if responders.length is 0
+  return responders[0] if responders.length is 1
 
-    touchHandlers: lazy: ->
-      @_createMixin()
+type.defineProperties
 
-  initFrozenValues: (responders) ->
+  touchHandlers: lazy: ->
+    @_createMixin()
 
-    _responders: responders
+type.defineFrozenValues
 
-  initValues: ->
+  _responders: (responders) -> responders
 
-    _activeResponder: null
+type.defineValues
+
+  _activeResponder: null
+
+type.defineMethods
 
   _setActiveResponder: (responder, event) ->
     assertType responder, Responder.Kind
@@ -50,7 +48,7 @@ module.exports = Factory "Gesture_ResponderList",
   _shouldRespond: (phase, event) ->
     assert @_activeResponder is null
     shouldRespond = no
-    sync.search @_responders, (responder) =>
+    sync.search @_responders, (responder) ->
       return yes unless responder.touchHandlers[phase] event
       shouldRespond = @_setActiveResponder responder, event
       return no
@@ -95,8 +93,7 @@ module.exports = Factory "Gesture_ResponderList",
       @_activeResponder.touchHandlers.onResponderStart event
 
     onResponderMove: (event) =>
-      # Allow a responder in this ResponderList to become active.
-      @_shouldCapture "onMoveShouldSetResponderCapture", event
+      @_onMoveShouldSetResponderCapture event
       @_activeResponder.touchHandlers.onResponderMove event
 
     onResponderEnd: (event) =>
@@ -112,3 +109,5 @@ module.exports = Factory "Gesture_ResponderList",
 
     onResponderTerminationRequest: (event) =>
       @_activeResponder.touchHandlers.onResponderTerminationRequest event
+
+module.exports = type.build()
