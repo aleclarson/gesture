@@ -1,10 +1,12 @@
-var LazyVar, ResponderSyntheticEvent, Type, assert, currentCentroidX, currentCentroidY, ref, touchHistory, type;
+var LazyVar, ResponderSyntheticEvent, Type, assert, currentCentroidX, currentCentroidY, fromArgs, ref, touchHistory, type;
 
 ref = require("TouchHistoryMath"), currentCentroidX = ref.currentCentroidX, currentCentroidY = ref.currentCentroidY;
 
 touchHistory = require("ResponderTouchHistoryStore").touchHistory;
 
 ResponderSyntheticEvent = require("ResponderSyntheticEvent");
+
+fromArgs = require("fromArgs");
 
 LazyVar = require("LazyVar");
 
@@ -14,27 +16,46 @@ Type = require("Type");
 
 type = Type("Gesture");
 
-type.optionTypes = {
-  x: Number,
-  y: Number
-};
-
-type.defineProperties({
-  isActive: {
-    get: function() {
-      return this.finished === null;
-    }
-  },
-  canUpdate: {
-    get: function() {
-      return this._currentTime < touchHistory.mostRecentTimeStamp;
-    }
-  }
+type.defineOptions({
+  x: Number.isRequired,
+  y: Number.isRequired
 });
 
-type.exposeGetters(["x0", "y0", "x", "y"]);
-
-type.exposeLazyGetters(["dx", "dy", "dt", "vx", "vy"]);
+type.defineGetters({
+  isActive: function() {
+    return this.finished === null;
+  },
+  canUpdate: function() {
+    return this._currentTime < touchHistory.mostRecentTimeStamp;
+  },
+  x0: function() {
+    return this._x0;
+  },
+  y0: function() {
+    return this._y0;
+  },
+  x: function() {
+    return this._x;
+  },
+  y: function() {
+    return this._y;
+  },
+  dx: function() {
+    return this._dx.get();
+  },
+  dy: function() {
+    return this._dy.get();
+  },
+  dt: function() {
+    return this._dt.get();
+  },
+  vx: function() {
+    return this._vx.get();
+  },
+  vy: function() {
+    return this._vy.get();
+  }
+});
 
 type.defineFrozenValues({
   _dx: function() {
@@ -81,23 +102,19 @@ type.defineValues({
   finished: null,
   _currentTime: 0,
   _prevTime: null,
-  _x0: function(options) {
-    return options.x;
+  _x: fromArgs("x"),
+  _y: fromArgs("y"),
+  _x0: function() {
+    return this._x;
   },
-  _y0: function(options) {
-    return options.y;
+  _y0: function() {
+    return this._y;
   },
-  _x: function(options) {
-    return options.x;
+  _prevX: function() {
+    return this._x;
   },
-  _y: function(options) {
-    return options.y;
-  },
-  _prevX: function(options) {
-    return options.x;
-  },
-  _prevY: function(options) {
-    return options.y;
+  _prevY: function() {
+    return this._y;
   },
   _grantDX: 0,
   _grantDY: 0,
@@ -132,7 +149,10 @@ type.defineMethods({
     this._dt.reset();
     this._vx.set(0);
     return this._vy.set(0);
-  },
+  }
+});
+
+type.defineHooks({
   __onReject: function() {
     return this.finished = false;
   },

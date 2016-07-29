@@ -22,42 +22,15 @@ TouchEvent =
 type = Type "Responder"
 
 type.defineOptions
-
-  # minTouchCount:
-  #   type: Number
-  #   default: 1
-  #
-  # maxTouchCount:
-  #   type: Number
-  #   default: Infinity
-
-  shouldRespondOnStart:
-    type: Function
-    default: emptyFunction.thatReturnsTrue
-
-  shouldRespondOnMove:
-    type: Function
-    default: emptyFunction.thatReturnsFalse
-
-  shouldRespondOnEnd:
-    type: Function
-    default: emptyFunction.thatReturnsFalse
-
-  shouldCaptureOnStart:
-    type: Function
-    default: emptyFunction.thatReturnsFalse
-
-  shouldCaptureOnMove:
-    type: Function
-    default: emptyFunction.thatReturnsFalse
-
-  shouldCaptureOnEnd:
-    type: Function
-    default: emptyFunction.thatReturnsFalse
-
-  shouldTerminate:
-    type: Function
-    default: emptyFunction.thatReturnsTrue
+  # minTouchCount: Number.withDefault 1
+  # maxTouchCount: Number.withDefault Infinity
+  shouldRespondOnStart: Function.withDefault emptyFunction.thatReturnsTrue
+  shouldRespondOnMove: Function.withDefault emptyFunction.thatReturnsFalse
+  shouldRespondOnEnd: Function.withDefault emptyFunction.thatReturnsFalse
+  shouldCaptureOnStart: Function.withDefault emptyFunction.thatReturnsFalse
+  shouldCaptureOnMove: Function.withDefault emptyFunction.thatReturnsFalse
+  shouldCaptureOnEnd: Function.withDefault emptyFunction.thatReturnsFalse
+  shouldTerminate: Function.withDefault emptyFunction.thatReturnsTrue
 
 type.defineStatics
 
@@ -69,40 +42,6 @@ type.defineStatics
 
   # Emits when the `grantedResponder` has a new value!
   didResponderGrant: Event()
-
-type.defineProperties
-
-  touchHandlers: get: ->
-    @_createMixin()
-
-  isEnabled:
-    value: yes
-    reactive: yes
-    didSet: ->
-      # TODO: Does this need a ResponderSyntheticEvent?
-      @terminate()
-
-  isActive: get: ->
-    @_gesture isnt null
-
-  isGranted: get: ->
-    @_isGranted
-
-  gesture: get: ->
-    @_gesture
-
-  _gesture:
-    value: null
-    reactive: yes
-
-  _isGranted:
-    value: no
-    reactive: yes
-    didSet: (newValue, oldValue) ->
-      return if newValue is oldValue
-      responder = if newValue then this else null
-      Responder.grantedResponder = responder
-      Responder.didResponderGrant.emit responder
 
 type.defineValues
 
@@ -122,23 +61,48 @@ type.defineValues
 
 type.defineEvents
 
-  didReject:
-    types: TouchEvent
+  didReject: TouchEvent
 
-  didGrant:
-    types: TouchEvent
+  didGrant: TouchEvent
 
-  didEnd:
-    types: TouchEvent
+  didEnd: TouchEvent
 
-  didTouchStart:
-    types: TouchEvent
+  didTouchStart: TouchEvent
 
-  didTouchMove:
-    types: TouchEvent
+  didTouchMove: TouchEvent
 
-  didTouchEnd:
-    types: TouchEvent
+  didTouchEnd: TouchEvent
+
+type.defineGetters
+
+  touchHandlers: -> @_createMixin()
+
+  isActive: -> @_gesture isnt null
+
+  isGranted: -> @_isGranted
+
+  gesture: -> @_gesture
+
+type.defineProperties
+
+  isEnabled:
+    value: yes
+    reactive: yes
+    didSet: ->
+      @terminate() # TODO: Does this need a ResponderSyntheticEvent?
+
+  _gesture:
+    value: null
+    reactive: yes
+
+  _isGranted:
+    value: no
+    reactive: yes
+    didSet: (newValue, oldValue) ->
+      return if newValue is oldValue
+      responder = if newValue then this else null
+      Responder.grantedResponder = responder
+      Responder.didResponderGrant.emit responder
 
 type.defineMethods
 
@@ -155,63 +119,6 @@ type.defineMethods
     @_deleteGesture()
 
     return
-
-  __canUpdate: ->
-    return @isEnabled and @_gesture and @_gesture.isActive
-
-  __createGesture: (options) ->
-    return Gesture options
-
-  __shouldRespondOnStart: (event) ->
-    @_shouldRespondOnStart @_gesture, event
-
-  __shouldRespondOnMove: (event) ->
-    @_shouldRespondOnMove @_gesture, event
-
-  __shouldRespondOnEnd: (event) ->
-    @_shouldRespondOnEnd @_gesture, event
-
-  __shouldCaptureOnStart: (event) ->
-    @_shouldCaptureOnStart @_gesture, event
-
-  __shouldCaptureOnMove: (event) ->
-    @_shouldCaptureOnMove @_gesture, event
-
-  __shouldCaptureOnEnd: (event) ->
-    @_shouldCaptureOnEnd @_gesture, event
-
-  __onTouchStart: (event, touchCount) ->
-    @_gesture.__onTouchStart event, touchCount
-    @_events.emit "didTouchStart", [ @_gesture, event ]
-
-  __onTouchMove: (event) ->
-    @_gesture.__onTouchMove event
-    @_events.emit "didTouchMove", [ @_gesture, event ]
-
-  __onTouchEnd: (event, touchCount) ->
-    @_gesture.__onTouchEnd event, touchCount
-    @_events.emit "didTouchEnd", [ @_gesture, event ]
-
-  __onReject: (event) ->
-    @_gesture.__onReject event
-    @_events.emit "didReject", [ @_gesture, event ]
-
-  __onGrant: (event) ->
-    @_gesture.__onGrant event
-    @_events.emit "didGrant", [ @_gesture, event ]
-
-  __onRelease: (event) ->
-    @_gesture.__onEnd yes, event
-    @_events.emit "didEnd", [ @_gesture, event ]
-    return
-
-  __onTerminate: (event) ->
-    @_gesture.__onEnd no, event
-    @_events.emit "didEnd", [ @_gesture, event ]
-
-  __onTerminationRequest: (event) ->
-    return yes unless @_gesture
-    return @_shouldTerminate @_gesture, event
 
   _setActive: (isActive) ->
     responders = Responder.activeResponders
@@ -366,6 +273,65 @@ type.defineMethods
     onResponderTerminationRequest: (event) =>
       return yes unless @_gesture
       return @__onTerminationRequest event
+
+type.defineHooks
+
+  __canUpdate: ->
+    return @isEnabled and @_gesture and @_gesture.isActive
+
+  __createGesture: (options) ->
+    return Gesture options
+
+  __shouldRespondOnStart: (event) ->
+    @_shouldRespondOnStart @_gesture, event
+
+  __shouldRespondOnMove: (event) ->
+    @_shouldRespondOnMove @_gesture, event
+
+  __shouldRespondOnEnd: (event) ->
+    @_shouldRespondOnEnd @_gesture, event
+
+  __shouldCaptureOnStart: (event) ->
+    @_shouldCaptureOnStart @_gesture, event
+
+  __shouldCaptureOnMove: (event) ->
+    @_shouldCaptureOnMove @_gesture, event
+
+  __shouldCaptureOnEnd: (event) ->
+    @_shouldCaptureOnEnd @_gesture, event
+
+  __onTouchStart: (event, touchCount) ->
+    @_gesture.__onTouchStart event, touchCount
+    @_events.emit "didTouchStart", [ @_gesture, event ]
+
+  __onTouchMove: (event) ->
+    @_gesture.__onTouchMove event
+    @_events.emit "didTouchMove", [ @_gesture, event ]
+
+  __onTouchEnd: (event, touchCount) ->
+    @_gesture.__onTouchEnd event, touchCount
+    @_events.emit "didTouchEnd", [ @_gesture, event ]
+
+  __onReject: (event) ->
+    @_gesture.__onReject event
+    @_events.emit "didReject", [ @_gesture, event ]
+
+  __onGrant: (event) ->
+    @_gesture.__onGrant event
+    @_events.emit "didGrant", [ @_gesture, event ]
+
+  __onRelease: (event) ->
+    @_gesture.__onEnd yes, event
+    @_events.emit "didEnd", [ @_gesture, event ]
+    return
+
+  __onTerminate: (event) ->
+    @_gesture.__onEnd no, event
+    @_events.emit "didEnd", [ @_gesture, event ]
+
+  __onTerminationRequest: (event) ->
+    return yes unless @_gesture
+    return @_shouldTerminate @_gesture, event
 
 module.exports = Responder = type.build()
 

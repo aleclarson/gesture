@@ -3,44 +3,52 @@
 { touchHistory } = require "ResponderTouchHistoryStore"
 
 ResponderSyntheticEvent = require "ResponderSyntheticEvent"
+fromArgs = require "fromArgs"
 LazyVar = require "LazyVar"
 assert = require "assert"
 Type = require "Type"
 
 type = Type "Gesture"
 
-type.optionTypes =
-  x: Number
-  y: Number
+type.defineOptions
+  x: Number.isRequired
+  y: Number.isRequired
 
-type.defineProperties
+type.defineGetters
 
-  isActive: get: ->
-    @finished is null
+  isActive: -> @finished is null
 
-  canUpdate: get: ->
-    @_currentTime < touchHistory.mostRecentTimeStamp
+  canUpdate: -> @_currentTime < touchHistory.mostRecentTimeStamp
 
-type.exposeGetters [ "x0", "y0", "x", "y" ]
+  x0: -> @_x0
 
-type.exposeLazyGetters [ "dx", "dy", "dt", "vx", "vy" ]
+  y0: -> @_y0
+
+  x: -> @_x
+
+  y: -> @_y
+
+  dx: -> @_dx.get()
+
+  dy: -> @_dy.get()
+
+  dt: -> @_dt.get()
+
+  vx: -> @_vx.get()
+
+  vy: -> @_vy.get()
 
 type.defineFrozenValues
 
-  _dx: -> LazyVar =>
-    @_x - @_x0
+  _dx: -> LazyVar => @_x - @_x0
 
-  _dy: -> LazyVar =>
-    @_y - @_y0
+  _dy: -> LazyVar => @_y - @_y0
 
-  _dt: -> LazyVar =>
-    @_currentTime - @_prevTime
+  _dt: -> LazyVar => @_currentTime - @_prevTime
 
-  _vx: -> LazyVar =>
-    (@_x - @_prevX) / @_dt.get()
+  _vx: -> LazyVar => (@_x - @_prevX) / @_dt.get()
 
-  _vy: -> LazyVar =>
-    (@_y - @_prevY) / @_dt.get()
+  _vy: -> LazyVar => (@_y - @_prevY) / @_dt.get()
 
 type.defineValues
 
@@ -52,17 +60,17 @@ type.defineValues
 
   _prevTime: null
 
-  _x0: (options) -> options.x
+  _x: fromArgs "x"
 
-  _y0: (options) -> options.y
+  _y: fromArgs "y"
 
-  _x: (options) -> options.x
+  _x0: -> @_x
 
-  _y: (options) -> options.y
+  _y0: -> @_y
 
-  _prevX: (options) -> options.x
+  _prevX: -> @_x
 
-  _prevY: (options) -> options.y
+  _prevY: -> @_y
 
   _grantDX: 0
 
@@ -106,6 +114,8 @@ type.defineMethods
 
     @_vx.set 0
     @_vy.set 0
+
+type.defineHooks
 
   __onReject: ->
     @finished = no

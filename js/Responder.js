@@ -30,34 +30,13 @@ TouchEvent = {
 type = Type("Responder");
 
 type.defineOptions({
-  shouldRespondOnStart: {
-    type: Function,
-    "default": emptyFunction.thatReturnsTrue
-  },
-  shouldRespondOnMove: {
-    type: Function,
-    "default": emptyFunction.thatReturnsFalse
-  },
-  shouldRespondOnEnd: {
-    type: Function,
-    "default": emptyFunction.thatReturnsFalse
-  },
-  shouldCaptureOnStart: {
-    type: Function,
-    "default": emptyFunction.thatReturnsFalse
-  },
-  shouldCaptureOnMove: {
-    type: Function,
-    "default": emptyFunction.thatReturnsFalse
-  },
-  shouldCaptureOnEnd: {
-    type: Function,
-    "default": emptyFunction.thatReturnsFalse
-  },
-  shouldTerminate: {
-    type: Function,
-    "default": emptyFunction.thatReturnsTrue
-  }
+  shouldRespondOnStart: Function.withDefault(emptyFunction.thatReturnsTrue),
+  shouldRespondOnMove: Function.withDefault(emptyFunction.thatReturnsFalse),
+  shouldRespondOnEnd: Function.withDefault(emptyFunction.thatReturnsFalse),
+  shouldCaptureOnStart: Function.withDefault(emptyFunction.thatReturnsFalse),
+  shouldCaptureOnMove: Function.withDefault(emptyFunction.thatReturnsFalse),
+  shouldCaptureOnEnd: Function.withDefault(emptyFunction.thatReturnsFalse),
+  shouldTerminate: Function.withDefault(emptyFunction.thatReturnsTrue)
 });
 
 type.defineStatics({
@@ -66,32 +45,46 @@ type.defineStatics({
   didResponderGrant: Event()
 });
 
-type.defineProperties({
-  touchHandlers: {
-    get: function() {
-      return this._createMixin();
-    }
+type.defineValues({
+  _shouldRespondOnStart: fromArgs("shouldRespondOnStart"),
+  _shouldRespondOnMove: fromArgs("shouldRespondOnMove"),
+  _shouldRespondOnEnd: fromArgs("shouldRespondOnEnd"),
+  _shouldCaptureOnStart: fromArgs("shouldCaptureOnStart"),
+  _shouldCaptureOnMove: fromArgs("shouldCaptureOnMove"),
+  _shouldCaptureOnEnd: fromArgs("shouldCaptureOnEnd"),
+  _shouldTerminate: fromArgs("shouldTerminate")
+});
+
+type.defineEvents({
+  didReject: TouchEvent,
+  didGrant: TouchEvent,
+  didEnd: TouchEvent,
+  didTouchStart: TouchEvent,
+  didTouchMove: TouchEvent,
+  didTouchEnd: TouchEvent
+});
+
+type.defineGetters({
+  touchHandlers: function() {
+    return this._createMixin();
   },
+  isActive: function() {
+    return this._gesture !== null;
+  },
+  isGranted: function() {
+    return this._isGranted;
+  },
+  gesture: function() {
+    return this._gesture;
+  }
+});
+
+type.defineProperties({
   isEnabled: {
     value: true,
     reactive: true,
     didSet: function() {
       return this.terminate();
-    }
-  },
-  isActive: {
-    get: function() {
-      return this._gesture !== null;
-    }
-  },
-  isGranted: {
-    get: function() {
-      return this._isGranted;
-    }
-  },
-  gesture: {
-    get: function() {
-      return this._gesture;
     }
   },
   _gesture: {
@@ -113,37 +106,6 @@ type.defineProperties({
   }
 });
 
-type.defineValues({
-  _shouldRespondOnStart: fromArgs("shouldRespondOnStart"),
-  _shouldRespondOnMove: fromArgs("shouldRespondOnMove"),
-  _shouldRespondOnEnd: fromArgs("shouldRespondOnEnd"),
-  _shouldCaptureOnStart: fromArgs("shouldCaptureOnStart"),
-  _shouldCaptureOnMove: fromArgs("shouldCaptureOnMove"),
-  _shouldCaptureOnEnd: fromArgs("shouldCaptureOnEnd"),
-  _shouldTerminate: fromArgs("shouldTerminate")
-});
-
-type.defineEvents({
-  didReject: {
-    types: TouchEvent
-  },
-  didGrant: {
-    types: TouchEvent
-  },
-  didEnd: {
-    types: TouchEvent
-  },
-  didTouchStart: {
-    types: TouchEvent
-  },
-  didTouchMove: {
-    types: TouchEvent
-  },
-  didTouchEnd: {
-    types: TouchEvent
-  }
-});
-
 type.defineMethods({
   terminate: function(event, finished) {
     if (!this.isActive) {
@@ -158,64 +120,6 @@ type.defineMethods({
       }
     }
     this._deleteGesture();
-  },
-  __canUpdate: function() {
-    return this.isEnabled && this._gesture && this._gesture.isActive;
-  },
-  __createGesture: function(options) {
-    return Gesture(options);
-  },
-  __shouldRespondOnStart: function(event) {
-    return this._shouldRespondOnStart(this._gesture, event);
-  },
-  __shouldRespondOnMove: function(event) {
-    return this._shouldRespondOnMove(this._gesture, event);
-  },
-  __shouldRespondOnEnd: function(event) {
-    return this._shouldRespondOnEnd(this._gesture, event);
-  },
-  __shouldCaptureOnStart: function(event) {
-    return this._shouldCaptureOnStart(this._gesture, event);
-  },
-  __shouldCaptureOnMove: function(event) {
-    return this._shouldCaptureOnMove(this._gesture, event);
-  },
-  __shouldCaptureOnEnd: function(event) {
-    return this._shouldCaptureOnEnd(this._gesture, event);
-  },
-  __onTouchStart: function(event, touchCount) {
-    this._gesture.__onTouchStart(event, touchCount);
-    return this._events.emit("didTouchStart", [this._gesture, event]);
-  },
-  __onTouchMove: function(event) {
-    this._gesture.__onTouchMove(event);
-    return this._events.emit("didTouchMove", [this._gesture, event]);
-  },
-  __onTouchEnd: function(event, touchCount) {
-    this._gesture.__onTouchEnd(event, touchCount);
-    return this._events.emit("didTouchEnd", [this._gesture, event]);
-  },
-  __onReject: function(event) {
-    this._gesture.__onReject(event);
-    return this._events.emit("didReject", [this._gesture, event]);
-  },
-  __onGrant: function(event) {
-    this._gesture.__onGrant(event);
-    return this._events.emit("didGrant", [this._gesture, event]);
-  },
-  __onRelease: function(event) {
-    this._gesture.__onEnd(true, event);
-    this._events.emit("didEnd", [this._gesture, event]);
-  },
-  __onTerminate: function(event) {
-    this._gesture.__onEnd(false, event);
-    return this._events.emit("didEnd", [this._gesture, event]);
-  },
-  __onTerminationRequest: function(event) {
-    if (!this._gesture) {
-      return true;
-    }
-    return this._shouldTerminate(this._gesture, event);
   },
   _setActive: function(isActive) {
     var responders;
@@ -402,6 +306,67 @@ type.defineMethods({
         };
       })(this)
     };
+  }
+});
+
+type.defineHooks({
+  __canUpdate: function() {
+    return this.isEnabled && this._gesture && this._gesture.isActive;
+  },
+  __createGesture: function(options) {
+    return Gesture(options);
+  },
+  __shouldRespondOnStart: function(event) {
+    return this._shouldRespondOnStart(this._gesture, event);
+  },
+  __shouldRespondOnMove: function(event) {
+    return this._shouldRespondOnMove(this._gesture, event);
+  },
+  __shouldRespondOnEnd: function(event) {
+    return this._shouldRespondOnEnd(this._gesture, event);
+  },
+  __shouldCaptureOnStart: function(event) {
+    return this._shouldCaptureOnStart(this._gesture, event);
+  },
+  __shouldCaptureOnMove: function(event) {
+    return this._shouldCaptureOnMove(this._gesture, event);
+  },
+  __shouldCaptureOnEnd: function(event) {
+    return this._shouldCaptureOnEnd(this._gesture, event);
+  },
+  __onTouchStart: function(event, touchCount) {
+    this._gesture.__onTouchStart(event, touchCount);
+    return this._events.emit("didTouchStart", [this._gesture, event]);
+  },
+  __onTouchMove: function(event) {
+    this._gesture.__onTouchMove(event);
+    return this._events.emit("didTouchMove", [this._gesture, event]);
+  },
+  __onTouchEnd: function(event, touchCount) {
+    this._gesture.__onTouchEnd(event, touchCount);
+    return this._events.emit("didTouchEnd", [this._gesture, event]);
+  },
+  __onReject: function(event) {
+    this._gesture.__onReject(event);
+    return this._events.emit("didReject", [this._gesture, event]);
+  },
+  __onGrant: function(event) {
+    this._gesture.__onGrant(event);
+    return this._events.emit("didGrant", [this._gesture, event]);
+  },
+  __onRelease: function(event) {
+    this._gesture.__onEnd(true, event);
+    this._events.emit("didEnd", [this._gesture, event]);
+  },
+  __onTerminate: function(event) {
+    this._gesture.__onEnd(false, event);
+    return this._events.emit("didEnd", [this._gesture, event]);
+  },
+  __onTerminationRequest: function(event) {
+    if (!this._gesture) {
+      return true;
+    }
+    return this._shouldTerminate(this._gesture, event);
   }
 });
 
