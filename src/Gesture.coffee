@@ -1,9 +1,8 @@
 
-{ currentCentroidX, currentCentroidY } = require "TouchHistoryMath"
-{ touchHistory } = require "ResponderTouchHistoryStore"
+{currentCentroidX, currentCentroidY} = require "TouchHistoryMath"
+{touchHistory} = require "ResponderTouchHistoryStore"
 
 ResponderSyntheticEvent = require "ResponderSyntheticEvent"
-fromArgs = require "fromArgs"
 LazyVar = require "LazyVar"
 assert = require "assert"
 Type = require "Type"
@@ -13,6 +12,53 @@ type = Type "Gesture"
 type.defineOptions
   x: Number.isRequired
   y: Number.isRequired
+
+type.defineValues (options) ->
+
+  touches: []
+
+  finished: null
+
+  _currentTime: 0
+
+  _prevTime: null
+
+  _x: options.x
+
+  _y: options.y
+
+  _x0: options.x
+
+  _y0: options.y
+
+  _prevX: options.x
+
+  _prevY: options.y
+
+  _grantDX: 0
+
+  _grantDY: 0
+
+  _lastMoveTime: null
+
+type.defineFrozenValues ->
+
+  _dx: LazyVar => @_x - @_x0
+
+  _dy: LazyVar => @_y - @_y0
+
+  _dt: LazyVar => @_currentTime - @_prevTime
+
+  _vx: LazyVar => (@_x - @_prevX) / @_dt.get()
+
+  _vy: LazyVar => (@_y - @_prevY) / @_dt.get()
+
+type.initInstance ->
+  @_dx.set 0
+  @_dy.set 0
+  @_dt.set 0
+  @_vx.set 0
+  @_vy.set 0
 
 type.defineGetters
 
@@ -37,53 +83,6 @@ type.defineGetters
   vx: -> @_vx.get()
 
   vy: -> @_vy.get()
-
-type.defineFrozenValues
-
-  _dx: -> LazyVar => @_x - @_x0
-
-  _dy: -> LazyVar => @_y - @_y0
-
-  _dt: -> LazyVar => @_currentTime - @_prevTime
-
-  _vx: -> LazyVar => (@_x - @_prevX) / @_dt.get()
-
-  _vy: -> LazyVar => (@_y - @_prevY) / @_dt.get()
-
-type.defineValues
-
-  touchCount: -> touchHistory.numberActiveTouches
-
-  finished: null
-
-  _currentTime: 0
-
-  _prevTime: null
-
-  _x: fromArgs "x"
-
-  _y: fromArgs "y"
-
-  _x0: -> @_x
-
-  _y0: -> @_y
-
-  _prevX: -> @_x
-
-  _prevY: -> @_y
-
-  _grantDX: 0
-
-  _grantDY: 0
-
-  _lastMoveTime: null
-
-type.initInstance ->
-  @_dx.set 0
-  @_dy.set 0
-  @_dt.set 0
-  @_vx.set 0
-  @_vy.set 0
 
 type.defineMethods
 
@@ -126,6 +125,7 @@ type.defineHooks
 
   __onEnd: (finished) ->
 
+    assert @isActive, "Gesture already ended!"
     @finished = finished
 
     # Detect a period of inactivity before the gesture ended.
@@ -133,10 +133,11 @@ type.defineHooks
       @_vx.set 0
       @_vy.set 0
 
-  __onTouchStart: (event, touchCount) ->
+  __onTouchStart: (event) ->
 
-    assert touchCount > 0, "Invalid touch count!"
-    @touchCount = touchCount
+    {touches} = event.nativeEvent
+    assert touches.length > 0, "Must have > 1 active touch!"
+    @touches = touches
 
     return unless @canUpdate
     @_updateTime()
@@ -159,12 +160,12 @@ type.defineHooks
     @_vx.reset()
     @_vy.reset()
 
-  __onTouchEnd: (event, touchCount) ->
+  __onTouchEnd: (event) ->
 
-    assert touchCount >= 0, "Invalid touch count!"
-    @touchCount = touchCount
+    {touches} = event.nativeEvent
+    @touches = touches
 
-    return if touchCount is 0
+    return if touches.length is 0
     return unless @canUpdate
 
     @_updateTime()

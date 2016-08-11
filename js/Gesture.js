@@ -1,12 +1,10 @@
-var LazyVar, ResponderSyntheticEvent, Type, assert, currentCentroidX, currentCentroidY, fromArgs, ref, touchHistory, type;
+var LazyVar, ResponderSyntheticEvent, Type, assert, currentCentroidX, currentCentroidY, ref, touchHistory, type;
 
 ref = require("TouchHistoryMath"), currentCentroidX = ref.currentCentroidX, currentCentroidY = ref.currentCentroidY;
 
 touchHistory = require("ResponderTouchHistoryStore").touchHistory;
 
 ResponderSyntheticEvent = require("ResponderSyntheticEvent");
-
-fromArgs = require("fromArgs");
 
 LazyVar = require("LazyVar");
 
@@ -19,6 +17,62 @@ type = Type("Gesture");
 type.defineOptions({
   x: Number.isRequired,
   y: Number.isRequired
+});
+
+type.defineValues(function(options) {
+  return {
+    touches: [],
+    finished: null,
+    _currentTime: 0,
+    _prevTime: null,
+    _x: options.x,
+    _y: options.y,
+    _x0: options.x,
+    _y0: options.y,
+    _prevX: options.x,
+    _prevY: options.y,
+    _grantDX: 0,
+    _grantDY: 0,
+    _lastMoveTime: null
+  };
+});
+
+type.defineFrozenValues(function() {
+  return {
+    _dx: LazyVar((function(_this) {
+      return function() {
+        return _this._x - _this._x0;
+      };
+    })(this)),
+    _dy: LazyVar((function(_this) {
+      return function() {
+        return _this._y - _this._y0;
+      };
+    })(this)),
+    _dt: LazyVar((function(_this) {
+      return function() {
+        return _this._currentTime - _this._prevTime;
+      };
+    })(this)),
+    _vx: LazyVar((function(_this) {
+      return function() {
+        return (_this._x - _this._prevX) / _this._dt.get();
+      };
+    })(this)),
+    _vy: LazyVar((function(_this) {
+      return function() {
+        return (_this._y - _this._prevY) / _this._dt.get();
+      };
+    })(this))
+  };
+});
+
+type.initInstance(function() {
+  this._dx.set(0);
+  this._dy.set(0);
+  this._dt.set(0);
+  this._vx.set(0);
+  return this._vy.set(0);
 });
 
 type.defineGetters({
@@ -57,78 +111,6 @@ type.defineGetters({
   }
 });
 
-type.defineFrozenValues({
-  _dx: function() {
-    return LazyVar((function(_this) {
-      return function() {
-        return _this._x - _this._x0;
-      };
-    })(this));
-  },
-  _dy: function() {
-    return LazyVar((function(_this) {
-      return function() {
-        return _this._y - _this._y0;
-      };
-    })(this));
-  },
-  _dt: function() {
-    return LazyVar((function(_this) {
-      return function() {
-        return _this._currentTime - _this._prevTime;
-      };
-    })(this));
-  },
-  _vx: function() {
-    return LazyVar((function(_this) {
-      return function() {
-        return (_this._x - _this._prevX) / _this._dt.get();
-      };
-    })(this));
-  },
-  _vy: function() {
-    return LazyVar((function(_this) {
-      return function() {
-        return (_this._y - _this._prevY) / _this._dt.get();
-      };
-    })(this));
-  }
-});
-
-type.defineValues({
-  touchCount: function() {
-    return touchHistory.numberActiveTouches;
-  },
-  finished: null,
-  _currentTime: 0,
-  _prevTime: null,
-  _x: fromArgs("x"),
-  _y: fromArgs("y"),
-  _x0: function() {
-    return this._x;
-  },
-  _y0: function() {
-    return this._y;
-  },
-  _prevX: function() {
-    return this._x;
-  },
-  _prevY: function() {
-    return this._y;
-  },
-  _grantDX: 0,
-  _grantDY: 0,
-  _lastMoveTime: null
-});
-
-type.initInstance(function() {
-  this._dx.set(0);
-  this._dy.set(0);
-  this._dt.set(0);
-  this._vx.set(0);
-  return this._vy.set(0);
-});
-
 type.defineMethods({
   _updateTime: function() {
     this._prevTime = this._currentTime;
@@ -161,15 +143,18 @@ type.defineHooks({
     return this._grantDY = this.dy;
   },
   __onEnd: function(finished) {
+    assert(this.isActive, "Gesture already ended!");
     this.finished = finished;
     if (this._lastMoveTime && (Date.now() - this._lastMoveTime) >= 150) {
       this._vx.set(0);
       return this._vy.set(0);
     }
   },
-  __onTouchStart: function(event, touchCount) {
-    assert(touchCount > 0, "Invalid touch count!");
-    this.touchCount = touchCount;
+  __onTouchStart: function(event) {
+    var touches;
+    touches = event.nativeEvent.touches;
+    assert(touches.length > 0, "Must have > 1 active touch!");
+    this.touches = touches;
     if (!this.canUpdate) {
       return;
     }
@@ -192,10 +177,11 @@ type.defineHooks({
     this._vx.reset();
     return this._vy.reset();
   },
-  __onTouchEnd: function(event, touchCount) {
-    assert(touchCount >= 0, "Invalid touch count!");
-    this.touchCount = touchCount;
-    if (touchCount === 0) {
+  __onTouchEnd: function(event) {
+    var touches;
+    touches = event.nativeEvent.touches;
+    this.touches = touches;
+    if (touches.length === 0) {
       return;
     }
     if (!this.canUpdate) {

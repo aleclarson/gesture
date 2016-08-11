@@ -1,4 +1,4 @@
-var Event, Gesture, Responder, ResponderEventPlugin, ResponderSyntheticEvent, TouchEvent, Type, assert, assertType, emptyFunction, fromArgs, hook, touchHistory, type;
+var Event, Gesture, Responder, ResponderEventPlugin, ResponderSyntheticEvent, TouchEvent, Type, assert, assertType, emptyFunction, hook, touchHistory, type;
 
 touchHistory = require("ResponderTouchHistoryStore").touchHistory;
 
@@ -9,8 +9,6 @@ ResponderEventPlugin = require("ResponderEventPlugin");
 emptyFunction = require("emptyFunction");
 
 assertType = require("assertType");
-
-fromArgs = require("fromArgs");
 
 assert = require("assert");
 
@@ -39,44 +37,16 @@ type.defineOptions({
   shouldTerminate: Function.withDefault(emptyFunction.thatReturnsTrue)
 });
 
-type.defineStatics({
-  activeResponders: [],
-  grantedResponder: null,
-  didResponderGrant: Event()
-});
-
-type.defineValues({
-  _shouldRespondOnStart: fromArgs("shouldRespondOnStart"),
-  _shouldRespondOnMove: fromArgs("shouldRespondOnMove"),
-  _shouldRespondOnEnd: fromArgs("shouldRespondOnEnd"),
-  _shouldCaptureOnStart: fromArgs("shouldCaptureOnStart"),
-  _shouldCaptureOnMove: fromArgs("shouldCaptureOnMove"),
-  _shouldCaptureOnEnd: fromArgs("shouldCaptureOnEnd"),
-  _shouldTerminate: fromArgs("shouldTerminate")
-});
-
-type.defineEvents({
-  didReject: TouchEvent,
-  didGrant: TouchEvent,
-  didEnd: TouchEvent,
-  didTouchStart: TouchEvent,
-  didTouchMove: TouchEvent,
-  didTouchEnd: TouchEvent
-});
-
-type.defineGetters({
-  touchHandlers: function() {
-    return this._createMixin();
-  },
-  isActive: function() {
-    return this._gesture !== null;
-  },
-  isGranted: function() {
-    return this._isGranted;
-  },
-  gesture: function() {
-    return this._gesture;
-  }
+type.defineValues(function(options) {
+  return {
+    _shouldRespondOnStart: options.shouldRespondOnStart,
+    _shouldRespondOnMove: options.shouldRespondOnMove,
+    _shouldRespondOnEnd: options.shouldRespondOnEnd,
+    _shouldCaptureOnStart: options.shouldCaptureOnStart,
+    _shouldCaptureOnMove: options.shouldCaptureOnMove,
+    _shouldCaptureOnEnd: options.shouldCaptureOnEnd,
+    _shouldTerminate: options.shouldTerminate
+  };
 });
 
 type.defineProperties({
@@ -95,101 +65,160 @@ type.defineProperties({
     value: false,
     reactive: true,
     didSet: function(newValue, oldValue) {
-      var responder;
       if (newValue === oldValue) {
         return;
       }
-      responder = newValue ? this : null;
-      Responder.grantedResponder = responder;
-      return Responder.didResponderGrant.emit(responder);
+      if (newValue) {
+        Responder.current = this;
+        return Responder.didGrant.emit(this);
+      } else {
+        Responder.current = null;
+        return Responder.didRelease.emit(this);
+      }
     }
   }
 });
 
+type.defineEvents({
+  didReject: TouchEvent,
+  didGrant: TouchEvent,
+  didEnd: TouchEvent,
+  didTouchStart: TouchEvent,
+  didTouchMove: TouchEvent,
+  didTouchEnd: TouchEvent
+});
+
+type.defineGetters({
+  touchHandlers: function() {
+    return this._createMixin();
+  },
+  gesture: function() {
+    return this._gesture;
+  },
+  isActive: function() {
+    return this._gesture && this._gesture.isActive;
+  },
+  isGranted: function() {
+    return this._isGranted;
+  }
+});
+
 type.defineMethods({
-  terminate: function(event, finished) {
-    if (!this.isActive) {
-      return;
-    }
-    this.__onTouchEnd(event, 0);
-    if (this.isGranted) {
-      if (finished === true) {
-        this.__onRelease(event);
-      } else {
-        this.__onTerminate(event);
-      }
-    }
-    this._deleteGesture();
-  },
-  _setActive: function(isActive) {
-    var responders;
-    responders = Responder.activeResponders;
-    if (isActive) {
-      return responders.push(this);
-    } else {
-      return responders.splice(responders.indexOf(this), 1);
+  finish: function(nativeEvent) {
+    var event;
+    assertType(nativeEvent, Object.Maybe);
+    if (this.isActive) {
+      event = this._createEvent(nativeEvent);
+      this._stopTracking();
+      this._gestureEnded(event, true);
     }
   },
-  _createGesture: function(event) {
+  terminate: function(nativeEvent) {
+    var event;
+    assertType(nativeEvent, Object.Maybe);
+    if (this.isActive) {
+      event = this._createEvent(nativeEvent);
+      this._stopTracking();
+      this._gestureEnded(event, false);
+    }
+  },
+  _createEvent: function(nativeEvent) {
+    var dispatchConfig, dispatchMarker;
+    if (nativeEvent == null) {
+      nativeEvent = {};
+    }
+    if (nativeEvent.touches == null) {
+      nativeEvent.touches = [];
+    }
+    return new ResponderSyntheticEvent(dispatchConfig = {}, dispatchMarker = "", nativeEvent, nativeEvent.target);
+  },
+  _gestureBegan: function(event) {
     var pageX, pageY, ref;
-    if (this._gesture) {
-      return;
-    }
+    assert(!this._gesture, "Must reset '_gesture' before calling '_gestureBegan'!");
     ref = event.nativeEvent, pageX = ref.pageX, pageY = ref.pageY;
     this._gesture = this.__createGesture({
       x: pageX,
       y: pageY
     });
-    this._setActive(true);
-    return assertType(this._gesture, Gesture.Kind);
+    assertType(this._gesture, Gesture.Kind);
+    Responder.tracking.push(this);
   },
-  _deleteGesture: function() {
-    assert(this.isActive, "Gesture not yet created!");
-    this._isGranted = false;
-    return this._gesture = null;
+  _stopTracking: function() {
+    var index, tracking;
+    tracking = Responder.tracking;
+    index = tracking.indexOf(this);
+    tracking.splice(index, 1);
   },
-  _onTouchStart: function(event, touchCount) {
-    if (this._gesture.touchCount === touchCount) {
-      return;
+  _gestureEnded: function(event, finished) {
+    assert(this._gesture, "Must set '_gesture' before calling '_gestureEnded'!");
+    this._touchEnded(event);
+    if (this._isGranted) {
+      if (finished) {
+        this.__onRelease(event);
+      } else {
+        this.__onTerminate(event);
+      }
     }
-    return this.__onTouchStart(event, touchCount);
+    this._gesture = null;
   },
-  _onTouchMove: function(event, touchCount) {
-    if (this._gesture.touchCount < touchCount) {
-      this.__onTouchStart(event, touchCount);
-      return;
+  _touchesChanged: function(newTouches) {
+    var index, oldTouches, touchCount;
+    assert(this._gesture, "Must set '_gesture' before calling '_touchesChanged'!");
+    oldTouches = this._gesture.touches;
+    touchCount = oldTouches.length;
+    if (touchCount !== newTouches.length) {
+      return true;
     }
-    assert(this._gesture.touchCount === touchCount, "Should call '_onTouchEnd' inside '_onTouchMove'!");
-    return this.__onTouchMove(event);
+    index = -1;
+    while (++index < touchCount) {
+      if (oldTouches[index].identifier !== newTouches[index].identifier) {
+        return true;
+      }
+    }
+    return false;
   },
-  _onTouchEnd: function(event, touchCount) {
-    assert(this._gesture.touchCount !== touchCount);
-    this.__onTouchEnd(event, touchCount);
-    if (touchCount > 0) {
-      return;
+  _touchBegan: function(event) {
+    var touches;
+    assert(this.isActive, "Must be active when calling '_touchBegan'!");
+    touches = event.nativeEvent.touches;
+    if (this._touchesChanged(touches)) {
+      this.__onTouchStart(event);
     }
-    this._deleteGesture();
-    return this._setActive(false);
+  },
+  _touchMoved: function(event) {
+    var touches;
+    assert(this.isActive, "Must be active when calling '_touchMoved'!");
+    touches = event.nativeEvent.touches;
+    assert(!this._touchesChanged(touches), "Must have same touches!");
+    this.__onTouchMove(event);
+  },
+  _touchEnded: function(event) {
+    var touches;
+    assert(this.isActive, "Must be active when calling '_touchEnded'!");
+    touches = event.nativeEvent.touches;
+    if (this._touchesChanged(touches)) {
+      this.__onTouchEnd(event);
+    }
   },
   _createMixin: function() {
     return {
       onStartShouldSetResponder: (function(_this) {
         return function(event) {
-          _this._createGesture(event);
-          if (!_this.__canUpdate()) {
-            return false;
+          _this._gesture || _this._gestureBegan(event);
+          if (_this.__canUpdate()) {
+            _this._touchBegan(event);
+            return _this.__shouldRespondOnStart(event);
           }
-          _this._onTouchStart(event, touchHistory.numberActiveTouches);
-          return _this.__shouldRespondOnStart(event);
+          return false;
         };
       })(this),
       onMoveShouldSetResponder: (function(_this) {
         return function(event) {
-          if (!_this.__canUpdate()) {
-            return false;
+          if (_this.__canUpdate()) {
+            _this._touchMoved(event);
+            return _this.__shouldRespondOnMove(event);
           }
-          _this._onTouchMove(event, touchHistory.numberActiveTouches);
-          return _this.__shouldRespondOnMove(event);
+          return false;
         };
       })(this),
       onEndShouldSetResponder: (function(_this) {
@@ -197,30 +226,30 @@ type.defineMethods({
           if (touchHistory.numberActiveTouches === 0) {
             return false;
           }
-          if (!_this.__canUpdate()) {
-            return false;
+          if (_this.__canUpdate()) {
+            _this._touchEnded(event);
+            return _this.__shouldRespondOnEnd(event);
           }
-          _this._onTouchEnd(event, touchHistory.numberActiveTouches);
-          return _this.__shouldRespondOnEnd(event);
+          return false;
         };
       })(this),
       onStartShouldSetResponderCapture: (function(_this) {
         return function(event) {
-          _this._createGesture(event);
-          if (!_this.__canUpdate()) {
-            return false;
+          _this._gesture || _this._gestureBegan(event);
+          if (_this.__canUpdate()) {
+            _this._touchBegan(event);
+            return _this.__shouldCaptureOnStart(event);
           }
-          _this._onTouchStart(event, touchHistory.numberActiveTouches);
-          return _this.__shouldCaptureOnStart(event);
+          return false;
         };
       })(this),
       onMoveShouldSetResponderCapture: (function(_this) {
         return function(event) {
-          if (!_this.__canUpdate()) {
-            return false;
+          if (_this.__canUpdate()) {
+            _this._touchMoved(event);
+            return _this.__shouldCaptureOnMove(event);
           }
-          _this._onTouchMove(event, touchHistory.numberActiveTouches);
-          return _this.__shouldCaptureOnMove(event);
+          return false;
         };
       })(this),
       onEndShouldSetResponderCapture: (function(_this) {
@@ -228,53 +257,39 @@ type.defineMethods({
           if (touchHistory.numberActiveTouches === 0) {
             return false;
           }
-          if (!_this.__canUpdate()) {
-            return false;
+          if (_this.__canUpdate()) {
+            _this._touchEnded(event);
+            return _this.__shouldCaptureOnEnd(event);
           }
-          _this._onTouchEnd(event, touchHistory.numberActiveTouches);
-          return _this.__shouldCaptureOnEnd(event);
+          return false;
         };
       })(this),
       onResponderStart: (function(_this) {
         return function(event) {
-          if (!_this.__canUpdate()) {
-            return;
-          }
-          return _this._onTouchStart(event, touchHistory.numberActiveTouches);
+          return _this.__canUpdate() && _this._touchBegan(event);
         };
       })(this),
       onResponderMove: (function(_this) {
         return function(event) {
-          if (!_this.__canUpdate()) {
-            return;
-          }
-          return _this._onTouchMove(event, touchHistory.numberActiveTouches);
+          return _this.__canUpdate() && _this._touchMoved(event);
         };
       })(this),
       onResponderEnd: (function(_this) {
         return function(event) {
-          if (!_this.__canUpdate()) {
-            return;
-          }
-          return _this._onTouchEnd(event, touchHistory.numberActiveTouches);
+          return _this.__canUpdate() && _this._touchEnded(event);
         };
       })(this),
       onResponderReject: (function(_this) {
         return function(event) {
-          if (!_this.__canUpdate()) {
-            return;
-          }
-          return _this.__onReject(event);
+          return _this.__canUpdate() && _this.__onReject(event);
         };
       })(this),
       onResponderGrant: (function(_this) {
         return function(event) {
-          if (!_this.isGranted) {
-            assert(Responder.grantedResponder === null, {
-              reason: "The `grantedResponder` must be null before it can be set to a new Responder!",
-              failedResponder: _this,
-              grantedResponder: Responder.grantedResponder
-            });
+          if (!_this._isGranted) {
+            if (Responder.current !== null) {
+              throw Error("`Responder.current` must be null before a new Responder can be set!");
+            }
             _this._isGranted = true;
             _this.__onGrant(event);
           }
@@ -284,17 +299,10 @@ type.defineMethods({
       onResponderRelease: emptyFunction,
       onResponderTerminate: (function(_this) {
         return function(event) {
-          if (!_this.__canUpdate()) {
-            return;
+          if (_this.__canUpdate()) {
+            _this._stopTracking();
+            _this._gestureEnded(event);
           }
-          if (_this.gesture.touchCount === 0) {
-            _this.__onTerminate(event);
-            return;
-          }
-          _this.__onTouchEnd(event, 0);
-          _this.__onTerminate(event);
-          _this._deleteGesture();
-          return _this._setActive(false);
         };
       })(this),
       onResponderTerminationRequest: (function(_this) {
@@ -311,7 +319,7 @@ type.defineMethods({
 
 type.defineHooks({
   __canUpdate: function() {
-    return this.isEnabled && this._gesture && this._gesture.isActive;
+    return this.isEnabled && this.isActive;
   },
   __createGesture: function(options) {
     return Gesture(options);
@@ -334,16 +342,16 @@ type.defineHooks({
   __shouldCaptureOnEnd: function(event) {
     return this._shouldCaptureOnEnd(this._gesture, event);
   },
-  __onTouchStart: function(event, touchCount) {
-    this._gesture.__onTouchStart(event, touchCount);
+  __onTouchStart: function(event) {
+    this._gesture.__onTouchStart(event);
     return this._events.emit("didTouchStart", [this._gesture, event]);
   },
   __onTouchMove: function(event) {
     this._gesture.__onTouchMove(event);
     return this._events.emit("didTouchMove", [this._gesture, event]);
   },
-  __onTouchEnd: function(event, touchCount) {
-    this._gesture.__onTouchEnd(event, touchCount);
+  __onTouchEnd: function(event) {
+    this._gesture.__onTouchEnd(event);
     return this._events.emit("didTouchEnd", [this._gesture, event]);
   },
   __onReject: function(event) {
@@ -356,10 +364,12 @@ type.defineHooks({
   },
   __onRelease: function(event) {
     this._gesture.__onEnd(true, event);
-    this._events.emit("didEnd", [this._gesture, event]);
+    this._isGranted = false;
+    return this._events.emit("didEnd", [this._gesture, event]);
   },
   __onTerminate: function(event) {
     this._gesture.__onEnd(false, event);
+    this._isGranted = false;
     return this._events.emit("didEnd", [this._gesture, event]);
   },
   __onTerminationRequest: function(event) {
@@ -370,19 +380,25 @@ type.defineHooks({
   }
 });
 
+type.defineStatics({
+  tracking: [],
+  current: null,
+  didGrant: Event(),
+  didRelease: Event()
+});
+
 module.exports = Responder = type.build();
 
 hook.before(ResponderEventPlugin, "onFinalTouch", function(event) {
-  var i, len, responder, responders;
-  responders = Responder.activeResponders;
-  if (responders.length === 0) {
+  var tracking;
+  tracking = Responder.tracking;
+  if (tracking.length === 0) {
     return;
   }
-  for (i = 0, len = responders.length; i < len; i++) {
-    responder = responders[i];
-    responder.terminate(event, true);
-  }
-  return responders.length = 0;
+  tracking.forEach(function(responder) {
+    responder.__canUpdate() && responder._gestureEnded(event, true);
+  });
+  return tracking.length = 0;
 });
 
 //# sourceMappingURL=map/Responder.map
