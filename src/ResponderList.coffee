@@ -1,17 +1,19 @@
 
-sync = require "sync"
 Type = require "Type"
+sync = require "sync"
 
 Responder = require "./Responder"
 
 type = Type "ResponderList"
 
-type.argumentTypes =
-  responders: Array
+type.defineArgs
+  responders: Array.isRequired
 
-type.initArguments (args) ->
-  args[0] = sync.filter args[0], (responder) -> responder instanceof Responder
-  return args
+# Safely ignore undefined responders.
+type.initArgs (args) ->
+  args[0] = sync.filter args[0], (responder) ->
+    responder instanceof Responder
+  return
 
 type.returnExisting (responders) ->
   return null if responders.length is 0

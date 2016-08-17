@@ -1,22 +1,21 @@
 var Responder, Type, sync, type;
 
-sync = require("sync");
-
 Type = require("Type");
+
+sync = require("sync");
 
 Responder = require("./Responder");
 
 type = Type("ResponderList");
 
-type.argumentTypes = {
-  responders: Array
-};
+type.defineArgs({
+  responders: Array.isRequired
+});
 
-type.initArguments(function(args) {
+type.initArgs(function(args) {
   args[0] = sync.filter(args[0], function(responder) {
     return responder instanceof Responder;
   });
-  return args;
 });
 
 type.returnExisting(function(responders) {
