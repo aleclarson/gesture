@@ -22,7 +22,7 @@ Gesture = require("./Gesture");
 
 TouchEvent = {
   gesture: Gesture.Kind,
-  event: [ResponderSyntheticEvent]
+  event: ResponderSyntheticEvent
 };
 
 type = Type("Responder");
