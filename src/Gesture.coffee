@@ -23,6 +23,8 @@ type.defineValues (options) ->
 
   _prevTime: null
 
+  _lastMoveTime: null
+
   _x: options.x
 
   _y: options.y
@@ -31,15 +33,13 @@ type.defineValues (options) ->
 
   _y0: options.y
 
+  _dx0: 0
+
+  _dy0: 0
+
   _prevX: options.x
 
   _prevY: options.y
-
-  _grantDX: 0
-
-  _grantDY: 0
-
-  _lastMoveTime: null
 
 type.defineFrozenValues ->
 
@@ -74,11 +74,15 @@ type.defineGetters
 
   y: -> @_y
 
+  dt: -> @_dt.get()
+
   dx: -> @_dx.get()
 
   dy: -> @_dy.get()
 
-  dt: -> @_dt.get()
+  dx0: -> @_dx0
+
+  dy0: -> @_dy0
 
   vx: -> @_vx.get()
 
@@ -120,8 +124,8 @@ type.defineHooks
     @finished = no
 
   __onGrant: ->
-    @_grantDX = @dx
-    @_grantDY = @dy
+    @_dx0 = @dx
+    @_dy0 = @dy
 
   __onEnd: (finished) ->
 

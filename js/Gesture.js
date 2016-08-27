@@ -25,15 +25,15 @@ type.defineValues(function(options) {
     finished: null,
     _currentTime: 0,
     _prevTime: null,
+    _lastMoveTime: null,
     _x: options.x,
     _y: options.y,
     _x0: options.x,
     _y0: options.y,
+    _dx0: 0,
+    _dy0: 0,
     _prevX: options.x,
-    _prevY: options.y,
-    _grantDX: 0,
-    _grantDY: 0,
-    _lastMoveTime: null
+    _prevY: options.y
   };
 });
 
@@ -94,14 +94,20 @@ type.defineGetters({
   y: function() {
     return this._y;
   },
+  dt: function() {
+    return this._dt.get();
+  },
   dx: function() {
     return this._dx.get();
   },
   dy: function() {
     return this._dy.get();
   },
-  dt: function() {
-    return this._dt.get();
+  dx0: function() {
+    return this._dx0;
+  },
+  dy0: function() {
+    return this._dy0;
   },
   vx: function() {
     return this._vx.get();
@@ -139,8 +145,8 @@ type.defineHooks({
     return this.finished = false;
   },
   __onGrant: function() {
-    this._grantDX = this.dx;
-    return this._grantDY = this.dy;
+    this._dx0 = this.dx;
+    return this._dy0 = this.dy;
   },
   __onEnd: function(finished) {
     assert(this.isActive, "Gesture already ended!");
