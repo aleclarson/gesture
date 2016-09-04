@@ -312,33 +312,33 @@ type.defineHooks
 
   __onTouchStart: (event) ->
     @_gesture.__onTouchStart event
-    @_events.emit "didTouchStart", [ @_gesture, event ]
+    @__events.didTouchStart @_gesture, event
 
   __onTouchMove: (event) ->
     @_gesture.__onTouchMove event
-    @_events.emit "didTouchMove", [ @_gesture, event ]
+    @__events.didTouchMove @_gesture, event
 
   __onTouchEnd: (event) ->
     @_gesture.__onTouchEnd event
-    @_events.emit "didTouchEnd", [ @_gesture, event ]
+    @__events.didTouchEnd @_gesture, event
 
   __onReject: (event) ->
     @_gesture.__onReject event
-    @_events.emit "didReject", [ @_gesture, event ]
+    @__events.didReject @_gesture, event
 
   __onGrant: (event) ->
     @_gesture.__onGrant event
-    @_events.emit "didGrant", [ @_gesture, event ]
+    @__events.didGrant @_gesture, event
 
   __onRelease: (event) ->
     @_gesture.__onEnd yes, event
     @_isGranted = no
-    @_events.emit "didEnd", [ @_gesture, event ]
+    @__events.didEnd @_gesture, event
 
   __onTerminate: (event) ->
     @_gesture.__onEnd no, event
     @_isGranted = no
-    @_events.emit "didEnd", [ @_gesture, event ]
+    @__events.didEnd @_gesture, event
 
   __onTerminationRequest: (event) ->
     return yes if not @_gesture

@@ -344,33 +344,33 @@ type.defineHooks({
   },
   __onTouchStart: function(event) {
     this._gesture.__onTouchStart(event);
-    return this._events.emit("didTouchStart", [this._gesture, event]);
+    return this.__events.didTouchStart(this._gesture, event);
   },
   __onTouchMove: function(event) {
     this._gesture.__onTouchMove(event);
-    return this._events.emit("didTouchMove", [this._gesture, event]);
+    return this.__events.didTouchMove(this._gesture, event);
   },
   __onTouchEnd: function(event) {
     this._gesture.__onTouchEnd(event);
-    return this._events.emit("didTouchEnd", [this._gesture, event]);
+    return this.__events.didTouchEnd(this._gesture, event);
   },
   __onReject: function(event) {
     this._gesture.__onReject(event);
-    return this._events.emit("didReject", [this._gesture, event]);
+    return this.__events.didReject(this._gesture, event);
   },
   __onGrant: function(event) {
     this._gesture.__onGrant(event);
-    return this._events.emit("didGrant", [this._gesture, event]);
+    return this.__events.didGrant(this._gesture, event);
   },
   __onRelease: function(event) {
     this._gesture.__onEnd(true, event);
     this._isGranted = false;
-    return this._events.emit("didEnd", [this._gesture, event]);
+    return this.__events.didEnd(this._gesture, event);
   },
   __onTerminate: function(event) {
     this._gesture.__onEnd(false, event);
     this._isGranted = false;
-    return this._events.emit("didEnd", [this._gesture, event]);
+    return this.__events.didEnd(this._gesture, event);
   },
   __onTerminationRequest: function(event) {
     if (!this._gesture) {
