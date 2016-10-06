@@ -366,9 +366,12 @@ module.exports = Responder = type.build()
 # NOTE: 'onFinalTouch' is added by a fork of 'react'.
 hook.before ResponderEventPlugin, "onFinalTouch", (event) ->
   {tracking} = Responder
+
   return if tracking.length is 0
   tracking.forEach (responder) ->
-    responder.__canUpdate() and
+    if responder.__canUpdate()
       responder._gestureEnded event, yes
     return
+
   tracking.length = 0
+  return
