@@ -1,22 +1,21 @@
 
 # TODO: Implement 'minTouchCount' and 'maxTouchCount'.
 
-{ touchHistory } = require "ResponderTouchHistoryStore"
+{touchHistory} = require "ResponderTouchHistoryStore"
 
 ResponderSyntheticEvent = require "ResponderSyntheticEvent"
 ResponderEventPlugin = require "ResponderEventPlugin"
 emptyFunction = require "emptyFunction"
 assertType = require "assertType"
-assert = require "assert"
 Event = require "Event"
+isDev = require "isDev"
 Type = require "Type"
 hook = require "hook"
 
+ResponderList = require "./ResponderList"
 Gesture = require "./Gesture"
 
-TouchEvent =
-  gesture: Gesture.Kind
-  event: ResponderSyntheticEvent
+TouchEvent = {gesture: Gesture.Kind, event: ResponderSyntheticEvent}
 
 type = Type "Responder"
 
@@ -52,8 +51,10 @@ type.defineProperties
   isEnabled:
     value: yes
     reactive: yes
-    didSet: ->
-      @terminate()
+    didSet: -> @terminate()
+
+  touchHandlers:
+    lazy: -> @_createMixin()
 
   _gesture:
     value: null
@@ -87,8 +88,6 @@ type.defineEvents
 
 type.defineGetters
 
-  touchHandlers: -> @_createMixin()
-
   gesture: -> @_gesture
 
   isActive: -> @_gesture and @_gesture.isActive
@@ -96,6 +95,15 @@ type.defineGetters
   isGranted: -> @_isGranted
 
 type.defineMethods
+
+  join: (responder) ->
+    if Array.isArray responder
+      responders = responder.filter (item) -> item instanceof Responder
+      return this unless responders.length
+      responders.push this
+      return ResponderList responders
+    return this unless responder instanceof Responder
+    return ResponderList [this, responder]
 
   finish: (nativeEvent) ->
     assertType nativeEvent, Object.Maybe
@@ -124,7 +132,10 @@ type.defineMethods
     )
 
   _gestureBegan: (event) ->
-    assert not @_gesture, "Must reset '_gesture' before calling '_gestureBegan'!"
+
+    if isDev and @_gesture
+      throw Error "Must reset '_gesture' before calling '_gestureBegan'!"
+
     { pageX, pageY } = event.nativeEvent
     @_gesture = @__createGesture { x: pageX, y: pageY }
     assertType @_gesture, Gesture.Kind
@@ -138,17 +149,23 @@ type.defineMethods
     return
 
   _gestureEnded: (event, finished) ->
-    assert @_gesture, "Must set '_gesture' before calling '_gestureEnded'!"
+
+    if isDev and not @_gesture
+      throw Error "Must set '_gesture' before calling '_gestureEnded'!"
+
     @_touchEnded event
     if @_isGranted
       if finished
-        @__onRelease event
+      then @__onRelease event
       else @__onTerminate event
     @_gesture = null
     return
 
   _touchesChanged: (newTouches) ->
-    assert @_gesture, "Must set '_gesture' before calling '_touchesChanged'!"
+
+    if isDev and not @_gesture
+      throw Error "Must set '_gesture' before calling '_touchesChanged'!"
+
     oldTouches = @_gesture.touches
     touchCount = oldTouches.length
     return yes if touchCount isnt newTouches.length
@@ -159,27 +176,39 @@ type.defineMethods
 
   # Avoids calling '__onTouchStart' when possible.
   _touchBegan: (event) ->
-    assert @isActive, "Must be active when calling '_touchBegan'!"
+
+    if isDev and not @isActive
+      throw Error "Must be active when calling '_touchBegan'!"
+
     {touches} = event.nativeEvent
     if @_touchesChanged touches
       @__onTouchStart event
     return
 
   _touchMoved: (event) ->
-    assert @isActive, "Must be active when calling '_touchMoved'!"
+
+    if isDev and not @isActive
+      throw Error "Must be active when calling '_touchMoved'!"
+
     {touches} = event.nativeEvent
-    assert not @_touchesChanged(touches), "Must have same touches!"
+
+    if isDev and @_touchesChanged touches
+      throw Error "Must have same touches!"
+
     @__onTouchMove event
     return
 
   _touchEnded: (event) ->
-    assert @isActive, "Must be active when calling '_touchEnded'!"
+
+    if isDev and not @isActive
+      throw Error "Must be active when calling '_touchEnded'!"
+
     {touches} = event.nativeEvent
     if @_touchesChanged touches
       @__onTouchEnd event
     return
 
-  _createMixin: ->
+  _createMixin: -> do =>
 
     onStartShouldSetResponder: (event) =>
 

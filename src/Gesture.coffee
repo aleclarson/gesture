@@ -4,7 +4,7 @@
 
 ResponderSyntheticEvent = require "ResponderSyntheticEvent"
 LazyVar = require "LazyVar"
-assert = require "assert"
+isDev = require "isDev"
 Type = require "Type"
 
 type = Type "Gesture"
@@ -129,7 +129,9 @@ type.defineHooks
 
   __onEnd: (finished) ->
 
-    assert @isActive, "Gesture already ended!"
+    if isDev and not @isActive
+      throw Error "Gesture already ended!"
+
     @finished = finished
 
     # Detect a period of inactivity before the gesture ended.
@@ -140,7 +142,9 @@ type.defineHooks
   __onTouchStart: (event) ->
 
     {touches} = event.nativeEvent
-    assert touches.length > 0, "Must have > 1 active touch!"
+    if isDev and not touches.length
+      throw Error "Must have > 1 active touch!"
+
     @touches = touches
 
     return unless @canUpdate
@@ -174,13 +178,5 @@ type.defineHooks
 
     @_updateTime()
     @_updateCentroid()
-
-type.defineStatics
-
-  Responder: lazy: ->
-    require "./Responder"
-
-  ResponderList: lazy: ->
-    require "./ResponderList"
 
 module.exports = type.build()
