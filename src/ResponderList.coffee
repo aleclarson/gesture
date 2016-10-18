@@ -36,14 +36,15 @@ type.defineMethods
       @_activeResponder = responder
       return yes
 
-    unless @_onResponderTerminationRequest event
+    {touchHandlers} = this
+    unless touchHandlers.onResponderTerminationRequest event
       responder.touchHandlers.onResponderReject? event
       return no
 
     log.it responder.__name + ".onGrant()"
-    @_onResponderTerminate event
+    touchHandlers.onResponderTerminate event
     @_activeResponder = responder
-    @_onResponderGrant event
+    touchHandlers.onResponderGrant event
     return yes
 
   _shouldRespond: (phase, event) ->
@@ -97,9 +98,11 @@ type.defineMethods
       @_activeHandlers.onResponderStart event
 
     onResponderMove: (event) =>
+      return if @_shouldCapture "onMoveShouldSetResponderCapture", event
       @_activeHandlers.onResponderMove event
 
     onResponderEnd: (event) =>
+      return if @_shouldCapture "onEndShouldSetResponderCapture", event
       @_activeHandlers.onResponderEnd event
 
     onResponderRelease: (event) =>
