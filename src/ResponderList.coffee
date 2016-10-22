@@ -32,7 +32,6 @@ type.defineMethods
   _setActiveResponder: (responder, event) ->
 
     unless @_activeResponder
-      log.it responder.__name + ".onGrant()"
       @_activeResponder = responder
       return yes
 
@@ -41,7 +40,6 @@ type.defineMethods
       responder.touchHandlers.onResponderReject? event
       return no
 
-    log.it responder.__name + ".onGrant()"
     touchHandlers.onResponderTerminate event
     @_activeResponder = responder
     touchHandlers.onResponderGrant event
