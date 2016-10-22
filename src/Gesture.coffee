@@ -3,6 +3,7 @@
 {touchHistory} = require "ResponderTouchHistoryStore"
 
 ResponderSyntheticEvent = require "ResponderSyntheticEvent"
+emptyFunction = require "emptyFunction"
 LazyVar = require "LazyVar"
 isDev = require "isDev"
 Type = require "Type"
@@ -33,9 +34,9 @@ type.defineValues (options) ->
 
   _y0: options.y
 
-  _dx0: 0
+  _dx0: null
 
-  _dy0: 0
+  _dy0: null
 
   _prevX: options.x
 
@@ -123,9 +124,7 @@ type.defineHooks
   __onReject: ->
     @finished = no
 
-  __onGrant: ->
-    @_dx0 = @dx
-    @_dy0 = @dy
+  __onGrant: emptyFunction
 
   __onEnd: (finished) ->
 
@@ -167,6 +166,11 @@ type.defineHooks
     @_dt.reset()
     @_vx.reset()
     @_vy.reset()
+
+    if @_dx0 is null
+      @_dx0 = @dx
+      @_dy0 = @dy
+    return
 
   __onTouchEnd: (event) ->
 
