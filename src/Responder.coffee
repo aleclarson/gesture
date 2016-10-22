@@ -100,7 +100,7 @@ type.defineMethods
     if Array.isArray responder
       responders = responder.filter (item) -> item instanceof Responder
       return this unless responders.length
-      responders.push this
+      responders.unshift this
       return ResponderList responders
     return this unless responder instanceof Responder
     return ResponderList [this, responder]
