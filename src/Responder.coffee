@@ -359,15 +359,16 @@ type.defineHooks
     @_gesture.__onGrant event
     @__events.didGrant @_gesture, event
 
-  __onRelease: (event) ->
-    @_gesture.__onEnd yes, event
+  __onEnd: (finished, event) ->
+    @_gesture.__onEnd finished, event
     @_isGranted = no
     @__events.didEnd @_gesture, event
 
+  __onRelease: (event) ->
+    @__onEnd yes, event
+
   __onTerminate: (event) ->
-    @_gesture.__onEnd no, event
-    @_isGranted = no
-    @__events.didEnd @_gesture, event
+    @__onEnd no, event
 
   __onTerminationRequest: (event) ->
     return yes if not @_gesture
