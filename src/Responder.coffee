@@ -72,7 +72,7 @@ type.defineProperties
         Responder.current = null
         Responder.didRelease.emit this
 
-type.defineEvents
+type.addMixin Event.Mixin,
 
   didReject: TouchEvent
 
