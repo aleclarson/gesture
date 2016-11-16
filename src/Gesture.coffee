@@ -42,7 +42,7 @@ type.defineValues (options) ->
 
   _prevY: options.y
 
-type.defineFrozenValues ->
+type.defineFrozenValues -> do =>
 
   _dx: LazyVar => @_x - @_x0
 
@@ -50,9 +50,9 @@ type.defineFrozenValues ->
 
   _dt: LazyVar => @_currentTime - @_prevTime
 
-  _vx: LazyVar => (@_x - @_prevX) / @_dt.get()
+  _vx: LazyVar => roundVelocity (@_x - @_prevX) / @_dt.get()
 
-  _vy: LazyVar => (@_y - @_prevY) / @_dt.get()
+  _vy: LazyVar => roundVelocity (@_y - @_prevY) / @_dt.get()
 
 type.initInstance ->
   @_dx.set 0
@@ -184,3 +184,8 @@ type.defineHooks
     @_updateCentroid()
 
 module.exports = type.build()
+
+roundVelocity = (v) ->
+  if 0.05 >= Math.abs v
+  then 0
+  else v
