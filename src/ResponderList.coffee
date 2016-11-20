@@ -3,8 +3,6 @@ isDev = require "isDev"
 Type = require "Type"
 sync = require "sync"
 
-module.exports =
-
 type = Type "ResponderList"
 
 type.defineArgs
