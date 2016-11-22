@@ -32,17 +32,17 @@ type.defineOptions
 
 type.defineValues (options) ->
 
-  didReject: Event {async: no, argTypes: TouchEvent}
+  didReject: Event.sync {argTypes: TouchEvent}
 
-  didGrant: Event {async: no, argTypes: TouchEvent}
+  didGrant: Event.sync {argTypes: TouchEvent}
 
-  didEnd: Event {async: no, argTypes: TouchEvent}
+  didEnd: Event.sync {argTypes: TouchEvent}
 
-  didTouchStart: Event {async: no, argTypes: TouchEvent}
+  didTouchStart: Event.sync {argTypes: TouchEvent}
 
-  didTouchMove: Event {async: no, argTypes: TouchEvent}
+  didTouchMove: Event.sync {argTypes: TouchEvent}
 
-  didTouchEnd: Event {async: no, argTypes: TouchEvent}
+  didTouchEnd: Event.sync {argTypes: TouchEvent}
 
   _shouldRespondOnStart: options.shouldRespondOnStart
 
