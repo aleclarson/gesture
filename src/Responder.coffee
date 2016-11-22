@@ -32,6 +32,18 @@ type.defineOptions
 
 type.defineValues (options) ->
 
+  didReject: Event {async: no, argTypes: TouchEvent}
+
+  didGrant: Event {async: no, argTypes: TouchEvent}
+
+  didEnd: Event {async: no, argTypes: TouchEvent}
+
+  didTouchStart: Event {async: no, argTypes: TouchEvent}
+
+  didTouchMove: Event {async: no, argTypes: TouchEvent}
+
+  didTouchEnd: Event {async: no, argTypes: TouchEvent}
+
   _shouldRespondOnStart: options.shouldRespondOnStart
 
   _shouldRespondOnMove: options.shouldRespondOnMove
@@ -71,20 +83,6 @@ type.defineProperties
       else
         Responder.current = null
         Responder.didRelease.emit this
-
-type.addMixin Event.Mixin,
-
-  didReject: TouchEvent
-
-  didGrant: TouchEvent
-
-  didEnd: TouchEvent
-
-  didTouchStart: TouchEvent
-
-  didTouchMove: TouchEvent
-
-  didTouchEnd: TouchEvent
 
 type.defineGetters
 
@@ -341,28 +339,28 @@ type.defineHooks
 
   __onTouchStart: (event) ->
     @_gesture.__onTouchStart event
-    @__events.didTouchStart @_gesture, event
+    @didTouchStart.emit @_gesture, event
 
   __onTouchMove: (event) ->
     @_gesture.__onTouchMove event
-    @__events.didTouchMove @_gesture, event
+    @didTouchMove.emit @_gesture, event
 
   __onTouchEnd: (event) ->
     @_gesture.__onTouchEnd event
-    @__events.didTouchEnd @_gesture, event
+    @didTouchEnd.emit @_gesture, event
 
   __onReject: (event) ->
     @_gesture.__onReject event
-    @__events.didReject @_gesture, event
+    @didReject.emit @_gesture, event
 
   __onGrant: (event) ->
     @_gesture.__onGrant event
-    @__events.didGrant @_gesture, event
+    @didGrant.emit @_gesture, event
 
   __onEnd: (finished, event) ->
     @_gesture.__onEnd finished, event
     @_isGranted = no
-    @__events.didEnd @_gesture, event
+    @didEnd.emit @_gesture, event
 
   __onRelease: (event) ->
     @__onEnd yes, event
