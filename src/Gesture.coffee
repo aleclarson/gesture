@@ -1,11 +1,11 @@
 
-{ currentCentroidX, currentCentroidY } = require "TouchHistoryMath"
-{ touchHistory } = require "ResponderTouchHistoryStore"
+{currentCentroidX, currentCentroidY} = require "TouchHistoryMath"
+{touchHistory} = require "ResponderTouchHistoryStore"
 
 ResponderSyntheticEvent = require "ResponderSyntheticEvent"
-fromArgs = require "fromArgs"
+emptyFunction = require "emptyFunction"
 LazyVar = require "LazyVar"
-assert = require "assert"
+isDev = require "isDev"
 Type = require "Type"
 
 type = Type "Gesture"
@@ -13,6 +13,53 @@ type = Type "Gesture"
 type.defineOptions
   x: Number.isRequired
   y: Number.isRequired
+
+type.defineValues (options) ->
+
+  touches: []
+
+  finished: null
+
+  _currentTime: 0
+
+  _prevTime: null
+
+  _lastMoveTime: null
+
+  _x: options.x
+
+  _y: options.y
+
+  _x0: options.x
+
+  _y0: options.y
+
+  _dx0: null
+
+  _dy0: null
+
+  _prevX: options.x
+
+  _prevY: options.y
+
+type.defineFrozenValues -> do =>
+
+  _dx: LazyVar => @_x - @_x0
+
+  _dy: LazyVar => @_y - @_y0
+
+  _dt: LazyVar => @_currentTime - @_prevTime
+
+  _vx: LazyVar => roundVelocity (@_x - @_prevX) / @_dt.get()
+
+  _vy: LazyVar => roundVelocity (@_y - @_prevY) / @_dt.get()
+
+type.initInstance ->
+  @_dx.set 0
+  @_dy.set 0
+  @_dt.set 0
+  @_vx.set 0
+  @_vy.set 0
 
 type.defineGetters
 
@@ -28,62 +75,19 @@ type.defineGetters
 
   y: -> @_y
 
+  dt: -> @_dt.get()
+
   dx: -> @_dx.get()
 
   dy: -> @_dy.get()
 
-  dt: -> @_dt.get()
+  dx0: -> @_dx0
+
+  dy0: -> @_dy0
 
   vx: -> @_vx.get()
 
   vy: -> @_vy.get()
-
-type.defineFrozenValues
-
-  _dx: -> LazyVar => @_x - @_x0
-
-  _dy: -> LazyVar => @_y - @_y0
-
-  _dt: -> LazyVar => @_currentTime - @_prevTime
-
-  _vx: -> LazyVar => (@_x - @_prevX) / @_dt.get()
-
-  _vy: -> LazyVar => (@_y - @_prevY) / @_dt.get()
-
-type.defineValues
-
-  touchCount: -> touchHistory.numberActiveTouches
-
-  finished: null
-
-  _currentTime: 0
-
-  _prevTime: null
-
-  _x: fromArgs "x"
-
-  _y: fromArgs "y"
-
-  _x0: -> @_x
-
-  _y0: -> @_y
-
-  _prevX: -> @_x
-
-  _prevY: -> @_y
-
-  _grantDX: 0
-
-  _grantDY: 0
-
-  _lastMoveTime: null
-
-type.initInstance ->
-  @_dx.set 0
-  @_dy.set 0
-  @_dt.set 0
-  @_vx.set 0
-  @_vy.set 0
 
 type.defineMethods
 
@@ -120,11 +124,12 @@ type.defineHooks
   __onReject: ->
     @finished = no
 
-  __onGrant: ->
-    @_grantDX = @dx
-    @_grantDY = @dy
+  __onGrant: emptyFunction
 
   __onEnd: (finished) ->
+
+    if isDev and not @isActive
+      throw Error "Gesture already ended!"
 
     @finished = finished
 
@@ -133,10 +138,13 @@ type.defineHooks
       @_vx.set 0
       @_vy.set 0
 
-  __onTouchStart: (event, touchCount) ->
+  __onTouchStart: (event) ->
 
-    assert touchCount > 0, "Invalid touch count!"
-    @touchCount = touchCount
+    {touches} = event.nativeEvent
+    if isDev and not touches.length
+      throw Error "Must have > 1 active touch!"
+
+    @touches = touches
 
     return unless @canUpdate
     @_updateTime()
@@ -159,23 +167,25 @@ type.defineHooks
     @_vx.reset()
     @_vy.reset()
 
-  __onTouchEnd: (event, touchCount) ->
+    if @_dx0 is null
+      @_dx0 = @dx
+      @_dy0 = @dy
+    return
 
-    assert touchCount >= 0, "Invalid touch count!"
-    @touchCount = touchCount
+  __onTouchEnd: (event) ->
 
-    return if touchCount is 0
+    {touches} = event.nativeEvent
+    @touches = touches
+
+    return if touches.length is 0
     return unless @canUpdate
 
     @_updateTime()
     @_updateCentroid()
 
-type.defineStatics
-
-  Responder: lazy: ->
-    require "./Responder"
-
-  ResponderList: lazy: ->
-    require "./ResponderList"
-
 module.exports = type.build()
+
+roundVelocity = (v) ->
+  if 0.05 >= Math.abs v
+  then 0
+  else v
