@@ -1,21 +1,25 @@
 
 # TODO: Implement 'minTouchCount' and 'maxTouchCount'.
 
-{touchHistory} = require "ResponderTouchHistoryStore"
-
 ResponderSyntheticEvent = require "ResponderSyntheticEvent"
 ResponderEventPlugin = require "ResponderEventPlugin"
+EventPluginUtils = require "EventPluginUtils"
+EventPluginHub = require "EventPluginHub"
+ResponderCache = require "ResponderCache"
 emptyFunction = require "emptyFunction"
 assertType = require "assertType"
 Event = require "Event"
 isDev = require "isDev"
 Type = require "Type"
 hook = require "hook"
+log = require "log"
 
 ResponderList = require "./ResponderList"
 Gesture = require "./Gesture"
 
-TouchEvent = {gesture: Gesture.Kind, event: ResponderSyntheticEvent}
+TouchEvent = Event.Type
+  argTypes: {gesture: Gesture.Kind, event: ResponderSyntheticEvent}
+  sync: yes
 
 type = Type "Responder"
 
@@ -32,17 +36,17 @@ type.defineOptions
 
 type.defineValues (options) ->
 
-  didReject: Event.sync {argTypes: TouchEvent}
+  didReject: TouchEvent()
 
-  didGrant: Event.sync {argTypes: TouchEvent}
+  didGrant: TouchEvent()
 
-  didEnd: Event.sync {argTypes: TouchEvent}
+  didEnd: TouchEvent()
 
-  didTouchStart: Event.sync {argTypes: TouchEvent}
+  didTouchStart: TouchEvent()
 
-  didTouchMove: Event.sync {argTypes: TouchEvent}
+  didTouchMove: TouchEvent()
 
-  didTouchEnd: Event.sync {argTypes: TouchEvent}
+  didTouchEnd: TouchEvent()
 
   _shouldRespondOnStart: options.shouldRespondOnStart
 
@@ -78,10 +82,10 @@ type.defineProperties
     didSet: (newValue, oldValue) ->
       return if newValue is oldValue
       if newValue
-        Responder.current = this
+        Responder.granted[@_gesture.target] = this
         Responder.didGrant.emit this
       else
-        Responder.current = null
+        delete Responder.granted[@_gesture.target]
         Responder.didRelease.emit this
 
 type.defineGetters
@@ -95,19 +99,24 @@ type.defineGetters
 type.defineMethods
 
   join: (responder) ->
+
     if Array.isArray responder
-      responders = responder.filter (item) -> item instanceof Responder
-      return this unless responders.length
-      responders.unshift this
-      return ResponderList responders
-    return this unless responder instanceof Responder
-    return ResponderList [this, responder]
+      responders = responder.filter (item) ->
+        item instanceof Responder
+
+      if responders.length
+        responders.unshift this
+        return ResponderList responders
+      return this
+
+    if responder instanceof Responder
+    then ResponderList [this, responder]
+    else this
 
   finish: (nativeEvent) ->
     assertType nativeEvent, Object.Maybe
     if @isActive
       event = @_createEvent nativeEvent
-      @_stopTracking()
       @_gestureEnded event, yes
     return
 
@@ -115,201 +124,126 @@ type.defineMethods
     assertType nativeEvent, Object.Maybe
     if @isActive
       event = @_createEvent nativeEvent
-      @_stopTracking()
       @_gestureEnded event, no
     return
 
   # TODO: Store most recent `nativeEvent` to use as default values?
   _createEvent: (nativeEvent = {}) ->
     nativeEvent.touches ?= []
-    new ResponderSyntheticEvent(
-      dispatchConfig = {},
-      dispatchMarker = "",
-      nativeEvent,
-      nativeEvent.target
-    )
+    # TODO: Use `ResponderSyntheticEvent.getPooled`
+    new ResponderSyntheticEvent dispatchConfig = {}, dispatchMarker = "", nativeEvent, nativeEvent.target
 
-  _gestureBegan: (event) ->
+  _gestureBegan: ({ nativeEvent }) ->
 
     if isDev and @_gesture
       throw Error "Must reset '_gesture' before calling '_gestureBegan'!"
 
-    { pageX, pageY } = event.nativeEvent
-    @_gesture = @__createGesture { x: pageX, y: pageY }
-    assertType @_gesture, Gesture.Kind
-    Responder.tracking.push this
-    return
+    @_gesture = @__createGesture
+      target: nativeEvent.target
+      touchHistory: nativeEvent.touchHistory
 
-  _stopTracking: ->
-    {tracking} = Responder
-    index = tracking.indexOf this
-    tracking.splice index, 1
+    if isDev
+      assertType @_gesture, Gesture.Kind
     return
 
   _gestureEnded: (event, finished) ->
 
     if isDev and not @_gesture
-      throw Error "Must set '_gesture' before calling '_gestureEnded'!"
+      throw Error "Must call '_gestureBegan' before '_gestureEnded'!"
 
-    @_touchEnded event
+    if isDev and not @_gesture.isActive
+      throw Error "Must only call '_gestureEnded' once!"
+
+    @__onTouchEnd event
+
     if @_isGranted
-      if finished
-      then @__onRelease event
-      else @__onTerminate event
+      @_isGranted = no
+      @__onEnd event, finished
+    else
+      @_gesture.__onEnd event, finished
+
     @_gesture = null
-    return
-
-  _touchesChanged: (newTouches) ->
-
-    if isDev and not @_gesture
-      throw Error "Must set '_gesture' before calling '_touchesChanged'!"
-
-    oldTouches = @_gesture.touches
-    touchCount = oldTouches.length
-    return yes if touchCount isnt newTouches.length
-    index = -1
-    while ++index < touchCount
-      return yes if oldTouches[index].identifier isnt newTouches[index].identifier
-    return no
-
-  # Avoids calling '__onTouchStart' when possible.
-  _touchBegan: (event) ->
-
-    if isDev and not @isActive
-      throw Error "Must be active when calling '_touchBegan'!"
-
-    {touches} = event.nativeEvent
-    if @_touchesChanged touches
-      @__onTouchStart event
-    return
-
-  _touchMoved: (event) ->
-
-    if isDev and not @isActive
-      throw Error "Must be active when calling '_touchMoved'!"
-
-    {touches} = event.nativeEvent
-
-    if isDev and @_touchesChanged touches
-      throw Error "Must have same touches!"
-
-    @__onTouchMove event
-    return
-
-  _touchEnded: (event) ->
-
-    if isDev and not @isActive
-      throw Error "Must be active when calling '_touchEnded'!"
-
-    {touches} = event.nativeEvent
-    if @_touchesChanged touches
-      @__onTouchEnd event
     return
 
   _createMixin: -> do =>
 
     onStartShouldSetResponder: (event) =>
 
-      @_gesture or @_gestureBegan event
+      unless @_gesture
+        @_gestureBegan event
 
       if @__canUpdate()
-        @_touchBegan event
-        return @__shouldRespondOnStart event
-      return no
+      then @__shouldRespondOnStart event
+      else no
 
     onMoveShouldSetResponder: (event) =>
       if @__canUpdate()
-        @_touchMoved event
-        return @__shouldRespondOnMove event
-      return no
-
-    onEndShouldSetResponder: (event) =>
-
-      # If we jump from >1 touches to 0 touches,
-      # an event is dispatched when no touches are active.
-      return no if touchHistory.numberActiveTouches is 0
-
-      if @__canUpdate()
-        @_touchEnded event
-        return @__shouldRespondOnEnd event
-      return no
+      then @__shouldRespondOnMove event
+      else no
 
     onStartShouldSetResponderCapture: (event) =>
-
       @_gesture or @_gestureBegan event
-
       if @__canUpdate()
-        @_touchBegan event
+        @__onTouchStart event
         return @__shouldCaptureOnStart event
       return no
 
     onMoveShouldSetResponderCapture: (event) =>
       if @__canUpdate()
-        @_touchMoved event
+        @__onTouchMove event
         return @__shouldCaptureOnMove event
       return no
 
-    onEndShouldSetResponderCapture: (event) =>
-
-      # If we jump from >1 touches to 0 touches,
-      # an event is dispatched when no touches are active.
-      return no if touchHistory.numberActiveTouches is 0
-
-      if @__canUpdate()
-        @_touchEnded event
-        return @__shouldCaptureOnEnd event
-      return no
-
-    # Called for every new finger that touches the screen.
-    # Called even when not `Responder.current`.
-    # Simultaneous events are batched.
     onResponderStart: (event) =>
-      @__canUpdate() and @_touchBegan event
+      if @__canUpdate()
+        @__onTouchStart event
+      return
 
-    # Called for every finger that moves.
-    # Called even when not `Responder.current`.
-    # Simultaneous events are batched.
     onResponderMove: (event) =>
-      @__canUpdate() and @_touchMoved event
+      if @__canUpdate()
+        @__onTouchMove event
+      return
 
-    # Called for every finger that stops touching the screen.
-    # Called even when not `Responder.current`.
-    # Simultaneous events are batched.
     onResponderEnd: (event) =>
-      @__canUpdate() and @_touchEnded event
 
-    # This must be implemented in case `Responder.current`
-    # returns false in its `shouldTerminate` callback.
+      if @_isGranted
+        return unless @__canUpdate()
+        @__onTouchEnd event
+
+      else if @isActive and @_gesture.touchHistory.numberActiveTouches is 0
+        @_gestureEnded event, yes
+      return
+
     onResponderReject: (event) =>
-      @__canUpdate() and @__onReject event
+      if @__canUpdate()
+        @__onReject event
+      return
 
-    # Must return true if native responders should be blocked.
     onResponderGrant: (event) =>
 
-      if not @_isGranted
-
-        if Responder.current isnt null
-          throw Error "`Responder.current` must be null before a new Responder can be set!"
-
+      unless @_isGranted
         @_isGranted = yes
         @__onGrant event
 
+      # Block the native responder.
       return yes
 
-    # This event is detected earlier by ResponderEventPlugin.onFinalTouch()
-    onResponderRelease: emptyFunction
+    onResponderRelease: (event) =>
+      if @__canUpdate()
+        @_gestureEnded event, yes
+      return
 
     onResponderTerminate: (event) =>
       if @__canUpdate()
-        @_stopTracking()
-        @_gestureEnded event
+        @_gestureEnded event, no
       return
 
     # Must return false to block the capturing responder.
-    # Must be `Responder.current` before receiving this event.
+    # Must be in `Responder.granted` before receiving this event.
     onResponderTerminationRequest: (event) =>
-      return yes if not @_gesture
-      return @__onTerminationRequest event
+      if @_gesture
+      then @__onTerminationRequest event
+      else yes
 
 type.defineHooks
 
@@ -357,16 +291,9 @@ type.defineHooks
     @_gesture.__onGrant event
     @didGrant.emit @_gesture, event
 
-  __onEnd: (finished, event) ->
-    @_gesture.__onEnd finished, event
-    @_isGranted = no
+  __onEnd: (event, finished) ->
+    @_gesture.__onEnd event, finished
     @didEnd.emit @_gesture, event
-
-  __onRelease: (event) ->
-    @__onEnd yes, event
-
-  __onTerminate: (event) ->
-    @__onEnd no, event
 
   __onTerminationRequest: (event) ->
     return yes if not @_gesture
@@ -374,32 +301,37 @@ type.defineHooks
 
 type.defineStatics
 
-  # All responders that are capable of claiming the active touch.
-  tracking: []
+  # Responders that have "captured" a gesture
+  granted: Object.create null
 
-  # The responder that most recently claimed to the active touch.
-  current: null
-
-  # Emits when `Responder.current` is set to a Responder.
+  # Emits when a Responder is added to `Responder.granted`
   didGrant: Event()
 
-  # Emits when `Responder.current` is set to null.
+  # Emits when a Responder is removed from `Responder.granted`
   didRelease: Event()
 
 module.exports = Responder = type.build()
 
-# Since only `Responder.current` receives the last "onTouchEnd"
-# event, we need to hook into `ResponderEventPlugin` for the
-# responders in `Responder.tracking`!
-# NOTE: 'onFinalTouch' is added by a fork of 'react'.
-hook.before ResponderEventPlugin, "onFinalTouch", (event) ->
-  {tracking} = Responder
+ResponderEventPlugin.injection.injectGlobalTouchHandler
+  onTouchEnd: (event) ->
+    {target, touchHistory} = event
 
-  return if tracking.length is 0
-  tracking.forEach (responder) ->
-    if responder.__canUpdate()
-      responder._gestureEnded event, yes
+    # If the target is granted, exclude it from the dispatch.
+    targetInst = EventPluginUtils.getInstanceFromNode target
+    parentInst =
+      if ResponderCache.hasResponder targetInst
+      then EventPluginUtils.getParentInstance targetInst
+      else targetInst
+
+    listeners = []
+    instances = []
+    while parentInst isnt null
+      if listener = EventPluginHub.getListener parentInst, "onResponderEnd"
+        listeners.push listener
+        instances.push parentInst
+      parentInst = EventPluginUtils.getParentInstance parentInst
+
+    # Call listeners top-down.
+    for listener, index in listeners
+      listener event, instances[index]
     return
-
-  tracking.length = 0
-  return

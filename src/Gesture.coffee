@@ -1,9 +1,9 @@
 
 {currentCentroidX, currentCentroidY} = require "TouchHistoryMath"
-{touchHistory} = require "ResponderTouchHistoryStore"
 
 ResponderSyntheticEvent = require "ResponderSyntheticEvent"
 emptyFunction = require "emptyFunction"
+TouchHistory = require "TouchHistory"
 LazyVar = require "LazyVar"
 isDev = require "isDev"
 Type = require "Type"
@@ -11,12 +11,14 @@ Type = require "Type"
 type = Type "Gesture"
 
 type.defineOptions
-  x: Number.isRequired
-  y: Number.isRequired
+  target: Number
+  touchHistory: TouchHistory
 
 type.defineValues (options) ->
 
-  touches: []
+  target: options.target
+
+  touchHistory: options.touchHistory
 
   finished: null
 
@@ -26,21 +28,23 @@ type.defineValues (options) ->
 
   _lastMoveTime: null
 
-  _x: options.x
+type.defineValues ->
 
-  _y: options.y
+  _x: x = currentCentroidX @touchHistory
 
-  _x0: options.x
+  _y: y = currentCentroidY @touchHistory
 
-  _y0: options.y
+  _x0: x
+
+  _y0: y
 
   _dx0: null
 
   _dy0: null
 
-  _prevX: options.x
+  _prevX: x
 
-  _prevY: options.y
+  _prevY: y
 
 type.defineFrozenValues -> do =>
 
@@ -65,7 +69,7 @@ type.defineGetters
 
   isActive: -> @finished is null
 
-  canUpdate: -> @_currentTime < touchHistory.mostRecentTimeStamp
+  canUpdate: -> @_currentTime < @touchHistory.mostRecentTimeStamp
 
   x0: -> @_x0
 
@@ -93,14 +97,15 @@ type.defineMethods
 
   _updateTime: ->
     @_prevTime = @_currentTime
-    @_currentTime = touchHistory.mostRecentTimeStamp
+    @_currentTime = @touchHistory.mostRecentTimeStamp
+    return
 
   # Called when a touch starts or ends.
   # It prevents large visual jumps by the centroid.
   _updateCentroid: ->
 
-    x = currentCentroidX touchHistory
-    y = currentCentroidY touchHistory
+    x = currentCentroidX @touchHistory
+    y = currentCentroidY @touchHistory
 
     dx = x - @_x
     dy = y - @_y
@@ -115,9 +120,9 @@ type.defineMethods
     @_prevY += dy
 
     @_dt.reset()
-
     @_vx.set 0
     @_vy.set 0
+    return
 
 type.defineHooks
 
@@ -126,7 +131,7 @@ type.defineHooks
 
   __onGrant: emptyFunction
 
-  __onEnd: (finished) ->
+  __onEnd: (event, finished) ->
 
     if isDev and not @isActive
       throw Error "Gesture already ended!"
@@ -137,18 +142,13 @@ type.defineHooks
     if @_lastMoveTime and (Date.now() - @_lastMoveTime) >= 150
       @_vx.set 0
       @_vy.set 0
+    return
 
   __onTouchStart: (event) ->
-
-    {touches} = event.nativeEvent
-    if isDev and not touches.length
-      throw Error "Must have > 1 active touch!"
-
-    @touches = touches
-
-    return unless @canUpdate
-    @_updateTime()
-    @_updateCentroid()
+    if @canUpdate
+      @_updateTime()
+      @_updateCentroid()
+    return
 
   __onTouchMove: ->
 
@@ -158,8 +158,8 @@ type.defineHooks
     @_lastMoveTime = Date.now()
     @_prevX = @_x
     @_prevY = @_y
-    @_x = currentCentroidX touchHistory
-    @_y = currentCentroidY touchHistory
+    @_x = currentCentroidX @touchHistory
+    @_y = currentCentroidY @touchHistory
 
     @_dx.reset()
     @_dy.reset()
@@ -173,15 +173,11 @@ type.defineHooks
     return
 
   __onTouchEnd: (event) ->
-
-    {touches} = event.nativeEvent
-    @touches = touches
-
-    return if touches.length is 0
     return unless @canUpdate
-
-    @_updateTime()
-    @_updateCentroid()
+    if @touchHistory.numberActiveTouches > 0
+      @_updateTime()
+      @_updateCentroid()
+    return
 
 module.exports = type.build()
 
