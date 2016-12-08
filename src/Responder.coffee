@@ -305,10 +305,10 @@ type.defineStatics
   granted: Object.create null
 
   # Emits when a Responder is added to `Responder.granted`
-  didGrant: Event()
+  didGrant: Event.sync()
 
   # Emits when a Responder is removed from `Responder.granted`
-  didRelease: Event()
+  didRelease: Event.sync()
 
 module.exports = Responder = type.build()
 
