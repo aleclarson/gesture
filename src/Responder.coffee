@@ -19,7 +19,6 @@ Gesture = require "./Gesture"
 
 TouchEvent = Event.Type
   argTypes: {gesture: Gesture.Kind, event: ResponderSyntheticEvent}
-  sync: yes
 
 type = Type "Responder"
 
@@ -305,10 +304,10 @@ type.defineStatics
   granted: Object.create null
 
   # Emits when a Responder is added to `Responder.granted`
-  didGrant: Event.sync()
+  didGrant: Event()
 
   # Emits when a Responder is removed from `Responder.granted`
-  didRelease: Event.sync()
+  didRelease: Event()
 
 module.exports = Responder = type.build()
 
