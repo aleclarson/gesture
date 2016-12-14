@@ -1,6 +1,6 @@
 {
   "name": "gesture",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "main": "js/index",
   "plugins": [
     "lotus-coffee"
