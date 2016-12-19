@@ -11,8 +11,6 @@ assertType = require "assertType"
 Event = require "Event"
 isDev = require "isDev"
 Type = require "Type"
-hook = require "hook"
-log = require "log"
 
 ResponderList = require "./ResponderList"
 Gesture = require "./Gesture"
