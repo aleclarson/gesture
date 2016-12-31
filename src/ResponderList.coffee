@@ -72,17 +72,11 @@ type.defineMethods
     onMoveShouldSetResponder: (event) =>
       @_shouldRespond "onMoveShouldSetResponder", event
 
-    onEndShouldSetResponder: (event) =>
-      @_shouldRespond "onEndShouldSetResponder", event
-
     onStartShouldSetResponderCapture: (event) =>
       @_shouldCapture "onStartShouldSetResponderCapture", event
 
     onMoveShouldSetResponderCapture: (event) =>
       @_shouldCapture "onMoveShouldSetResponderCapture", event
-
-    onEndShouldSetResponderCapture: (event) =>
-      @_shouldCapture "onEndShouldSetResponderCapture", event
 
     onResponderReject: (event) =>
       @_activeHandlers.onResponderReject event
@@ -98,7 +92,7 @@ type.defineMethods
       @_activeHandlers.onResponderMove event
 
     onResponderEnd: (event) =>
-      return if @_shouldCapture "onEndShouldSetResponderCapture", event
+      return unless @_activeResponder
       @_activeHandlers.onResponderEnd event
 
     onResponderRelease: (event) =>
