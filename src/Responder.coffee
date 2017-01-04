@@ -307,6 +307,21 @@ type.defineStatics
   # Emits when a Responder is removed from `Responder.granted`
   didRelease: Event()
 
+  eventNames: [
+    "onStartShouldSetResponder"
+    "onStartShouldSetResponderCapture"
+    "onMoveShouldSetResponder"
+    "onMoveShouldSetResponderCapture"
+    "onResponderReject"
+    "onResponderGrant"
+    "onResponderStart"
+    "onResponderMove"
+    "onResponderEnd"
+    "onResponderRelease"
+    "onResponderTerminate"
+    "onResponderTerminationRequest"
+  ]
+
 module.exports = Responder = type.build()
 
 ResponderEventPlugin.injection.injectGlobalTouchHandler
