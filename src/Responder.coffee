@@ -37,7 +37,7 @@ type.defineValues (options) ->
 
   didGrant: TouchEvent()
 
-  didEnd: TouchEvent()
+  didRelease: TouchEvent()
 
   didTouchStart: TouchEvent()
 
@@ -155,9 +155,9 @@ type.defineMethods
 
     if @_isGranted
       @_isGranted = no
-      @__onEnd event, finished
+      @__onRelease event, finished
     else
-      @_gesture.__onEnd event, finished
+      @_gesture.__onRelease event, finished
 
     @_gesture = null
     return
@@ -288,9 +288,9 @@ type.defineHooks
     @_gesture.__onGrant event
     @didGrant.emit @_gesture, event
 
-  __onEnd: (event, finished) ->
-    @_gesture.__onEnd event, finished
-    @didEnd.emit @_gesture, event
+  __onRelease: (event, finished) ->
+    @_gesture.__onRelease event, finished
+    @didRelease.emit @_gesture, event
 
   __onTerminationRequest: (event) ->
     return yes if not @_gesture
@@ -306,6 +306,21 @@ type.defineStatics
 
   # Emits when a Responder is removed from `Responder.granted`
   didRelease: Event()
+
+  eventNames: [
+    "onStartShouldSetResponder"
+    "onStartShouldSetResponderCapture"
+    "onMoveShouldSetResponder"
+    "onMoveShouldSetResponderCapture"
+    "onResponderReject"
+    "onResponderGrant"
+    "onResponderStart"
+    "onResponderMove"
+    "onResponderEnd"
+    "onResponderRelease"
+    "onResponderTerminate"
+    "onResponderTerminationRequest"
+  ]
 
 module.exports = Responder = type.build()
 

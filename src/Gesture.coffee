@@ -131,7 +131,7 @@ type.defineHooks
 
   __onGrant: emptyFunction
 
-  __onEnd: (event, finished) ->
+  __onRelease: (event, finished) ->
 
     if isDev and not @isActive
       throw Error "Gesture already ended!"
