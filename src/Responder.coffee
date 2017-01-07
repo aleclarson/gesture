@@ -89,7 +89,7 @@ type.defineGetters
 
   gesture: -> @_gesture
 
-  isActive: -> @_gesture and @_gesture.isActive
+  isActive: -> if @_gesture then @_gesture.isActive else no
 
   isGranted: -> @_isGranted
 
@@ -214,6 +214,7 @@ type.defineMethods
     onResponderReject: (event) =>
       if @__canUpdate()
         @__onReject event
+        @_gestureEnded event, no
       return
 
     onResponderGrant: (event) =>
