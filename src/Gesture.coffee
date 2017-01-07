@@ -126,8 +126,7 @@ type.defineMethods
 
 type.defineHooks
 
-  __onReject: ->
-    @finished = no
+  __onReject: emptyFunction
 
   __onGrant: emptyFunction
 

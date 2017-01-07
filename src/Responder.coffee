@@ -214,6 +214,7 @@ type.defineMethods
     onResponderReject: (event) =>
       if @__canUpdate()
         @__onReject event
+        @_gestureEnded event, no
       return
 
     onResponderGrant: (event) =>
