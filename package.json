@@ -1,6 +1,6 @@
 {
   "name": "gesture",
-  "version": "2.3.1",
+  "version": "2.3.2",
   "main": "js/index",
   "plugins": [
     "lotus-coffee"
@@ -10,9 +10,9 @@
     "postinstall": "npm run build"
   },
   "dependencies": {
-    "Event": "aleclarson/Event#3.0.0",
+    "Event": "aleclarson/Event#3.1.2",
     "LazyVar": "aleclarson/LazyVar#2.1.1",
-    "Type": "aleclarson/Type#2.1.0",
+    "Type": "aleclarson/Type#2.2.0",
     "assertType": "aleclarson/assertType#2.0.1",
     "emptyFunction": "aleclarson/emptyFunction#1.0.0",
     "isDev": "aleclarson/isDev#2.0.0",
