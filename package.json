@@ -16,7 +16,7 @@
     "assertType": "aleclarson/assertType#2.0.1",
     "emptyFunction": "aleclarson/emptyFunction#1.0.0",
     "isDev": "aleclarson/isDev#2.0.0",
-    "sync": "aleclarson/sync#1.0.1"
+    "sync": "aleclarson/sync#1.0.2"
   },
   "implicitDependencies": [
     "EventPluginHub",
