@@ -20,16 +20,29 @@ TouchEvent = Event.Type
 
 type = Type "Responder"
 
-type.defineOptions
-  # minTouchCount: Number.withDefault 1
-  # maxTouchCount: Number.withDefault Infinity
-  shouldRespondOnStart: Function.withDefault emptyFunction.thatReturnsTrue
-  shouldRespondOnMove: Function.withDefault emptyFunction.thatReturnsFalse
-  shouldRespondOnEnd: Function.withDefault emptyFunction.thatReturnsFalse
-  shouldCaptureOnStart: Function.withDefault emptyFunction.thatReturnsFalse
-  shouldCaptureOnMove: Function.withDefault emptyFunction.thatReturnsFalse
-  shouldCaptureOnEnd: Function.withDefault emptyFunction.thatReturnsFalse
-  shouldTerminate: Function.withDefault emptyFunction.thatReturnsTrue
+type.defineArgs ->
+
+  types:
+    # minTouchCount: Number
+    # maxTouchCount: Number
+    shouldRespondOnStart: Function
+    shouldRespondOnMove: Function
+    shouldRespondOnEnd: Function
+    shouldCaptureOnStart: Function
+    shouldCaptureOnMove: Function
+    shouldCaptureOnEnd: Function
+    shouldTerminate: Function
+
+  defaults:
+    # minTouchCount: 1
+    # maxTouchCount: Infinity
+    shouldRespondOnStart: emptyFunction.thatReturnsTrue
+    shouldRespondOnMove: emptyFunction.thatReturnsFalse
+    shouldRespondOnEnd: emptyFunction.thatReturnsFalse
+    shouldCaptureOnStart: emptyFunction.thatReturnsFalse
+    shouldCaptureOnMove: emptyFunction.thatReturnsFalse
+    shouldCaptureOnEnd: emptyFunction.thatReturnsFalse
+    shouldTerminate: emptyFunction.thatReturnsTrue
 
 type.defineValues (options) ->
 

@@ -10,7 +10,7 @@ Type = require "Type"
 
 type = Type "Gesture"
 
-type.defineOptions
+type.defineArgs
   target: Number
   touchHistory: TouchHistory
 
