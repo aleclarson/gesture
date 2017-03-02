@@ -5,8 +5,7 @@ sync = require "sync"
 
 type = Type "ResponderList"
 
-type.defineArgs
-  responders: Array.isRequired
+type.defineArgs [Array]
 
 type.defineProperties
 
