@@ -8,15 +8,16 @@ EventPluginHub = require "EventPluginHub"
 ResponderCache = require "ResponderCache"
 emptyFunction = require "emptyFunction"
 assertType = require "assertType"
-Event = require "Event"
+Event = require "eve"
 isDev = require "isDev"
 Type = require "Type"
 
 ResponderList = require "./ResponderList"
 Gesture = require "./Gesture"
 
-TouchEvent = Event.Type
-  argTypes: {gesture: Gesture.Kind, event: ResponderSyntheticEvent}
+TouchEvent = do ->
+  types = {gesture: Gesture.Kind, event: ResponderSyntheticEvent}
+  return -> Event {types}
 
 type = Type "Responder"
 
