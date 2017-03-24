@@ -1,11 +1,12 @@
 
 # TODO: Implement 'minTouchCount' and 'maxTouchCount'.
 
-ResponderSyntheticEvent = require "ResponderSyntheticEvent"
-ResponderEventPlugin = require "ResponderEventPlugin"
-EventPluginUtils = require "EventPluginUtils"
-EventPluginHub = require "EventPluginHub"
-ResponderCache = require "ResponderCache"
+ResponderSyntheticEvent = require "react-native/lib/ResponderSyntheticEvent"
+ResponderEventPlugin = require "react-native/lib/ResponderEventPlugin"
+EventPluginUtils = require "react-native/lib/EventPluginUtils"
+EventPluginHub = require "react-native/lib/EventPluginHub"
+ResponderCache = require "react-native/lib/ResponderCache"
+
 emptyFunction = require "emptyFunction"
 assertType = require "assertType"
 Event = require "eve"
