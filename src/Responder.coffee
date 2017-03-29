@@ -341,7 +341,7 @@ ResponderEventPlugin.injection.injectGlobalTouchHandler
     {target, touchHistory} = event
 
     # If the target is granted, exclude it from the dispatch.
-    targetInst = EventPluginUtils.getInstanceFromNode target
+    targetInst = EventPluginUtils.getInstanceFromTag target
     parentInst =
       if ResponderCache.hasResponder targetInst
       then EventPluginUtils.getParentInstance targetInst
