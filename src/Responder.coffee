@@ -16,10 +16,6 @@ Type = require "Type"
 ResponderList = require "./ResponderList"
 Gesture = require "./Gesture"
 
-TouchEvent = do ->
-  types = {gesture: Gesture.Kind, event: ResponderSyntheticEvent}
-  return -> Event {types}
-
 type = Type "Responder"
 
 type.defineArgs ->
@@ -48,17 +44,17 @@ type.defineArgs ->
 
 type.defineValues (options) ->
 
-  didReject: TouchEvent()
+  didReject: Event()
 
-  didGrant: TouchEvent()
+  didGrant: Event()
 
-  didRelease: TouchEvent()
+  didRelease: Event()
 
-  didTouchStart: TouchEvent()
+  didTouchStart: Event()
 
-  didTouchMove: TouchEvent()
+  didTouchMove: Event()
 
-  didTouchEnd: TouchEvent()
+  didTouchEnd: Event()
 
   _shouldRespondOnStart: options.shouldRespondOnStart
 
