@@ -1,11 +1,12 @@
 
 # TODO: Implement 'minTouchCount' and 'maxTouchCount'.
 
-ResponderSyntheticEvent = require "ResponderSyntheticEvent"
-ResponderEventPlugin = require "ResponderEventPlugin"
-EventPluginUtils = require "EventPluginUtils"
-EventPluginHub = require "EventPluginHub"
-ResponderCache = require "ResponderCache"
+ResponderSyntheticEvent = require "react-native/lib/ResponderSyntheticEvent"
+ResponderEventPlugin = require "react-native/lib/ResponderEventPlugin"
+EventPluginUtils = require "react-native/lib/EventPluginUtils"
+EventPluginHub = require "react-native/lib/EventPluginHub"
+ResponderCache = require "react-native/lib/ResponderCache"
+
 emptyFunction = require "emptyFunction"
 assertType = require "assertType"
 Event = require "eve"
@@ -14,10 +15,6 @@ Type = require "Type"
 
 ResponderList = require "./ResponderList"
 Gesture = require "./Gesture"
-
-TouchEvent = do ->
-  types = {gesture: Gesture.Kind, event: ResponderSyntheticEvent}
-  return -> Event {types}
 
 type = Type "Responder"
 
@@ -47,17 +44,17 @@ type.defineArgs ->
 
 type.defineValues (options) ->
 
-  didReject: TouchEvent()
+  didReject: Event()
 
-  didGrant: TouchEvent()
+  didGrant: Event()
 
-  didRelease: TouchEvent()
+  didRelease: Event()
 
-  didTouchStart: TouchEvent()
+  didTouchStart: Event()
 
-  didTouchMove: TouchEvent()
+  didTouchMove: Event()
 
-  didTouchEnd: TouchEvent()
+  didTouchEnd: Event()
 
   _shouldRespondOnStart: options.shouldRespondOnStart
 
@@ -344,7 +341,7 @@ ResponderEventPlugin.injection.injectGlobalTouchHandler
     {target, touchHistory} = event
 
     # If the target is granted, exclude it from the dispatch.
-    targetInst = EventPluginUtils.getInstanceFromNode target
+    targetInst = EventPluginUtils.getInstanceFromTag target
     parentInst =
       if ResponderCache.hasResponder targetInst
       then EventPluginUtils.getParentInstance targetInst

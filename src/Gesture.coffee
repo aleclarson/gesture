@@ -1,9 +1,9 @@
 
-{currentCentroidX, currentCentroidY} = require "TouchHistoryMath"
+{currentCentroidX, currentCentroidY} = require "react-native/lib/TouchHistoryMath"
+ResponderSyntheticEvent = require "react-native/lib/ResponderSyntheticEvent"
+TouchHistory = require "react-native/lib/TouchHistory"
 
-ResponderSyntheticEvent = require "ResponderSyntheticEvent"
 emptyFunction = require "emptyFunction"
-TouchHistory = require "TouchHistory"
 LazyVar = require "LazyVar"
 isDev = require "isDev"
 Type = require "Type"
