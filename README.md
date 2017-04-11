@@ -1,5 +1,5 @@
 
-# gesture v2.5.0 ![stable](https://img.shields.io/badge/stability-stable-4EBA0F.svg?style=flat)
+# gesture v3.0.0 ![stable](https://img.shields.io/badge/stability-stable-4EBA0F.svg?style=flat)
 
 A gesture library for [React](http://github.com/facebook/react) and [React Native](http://github.com/facebook/react-native).
 
