@@ -10,7 +10,6 @@
     "postinstall": "npm run build"
   },
   "dependencies": {
-    "LazyVar": "aleclarson/LazyVar#2.2.0",
     "Type": "aleclarson/Type#2.3.1",
     "assertType": "aleclarson/assertType#2.0.1",
     "emptyFunction": "aleclarson/emptyFunction#1.0.0",
