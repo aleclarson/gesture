@@ -7,14 +7,11 @@ type = Type "ResponderList"
 
 type.defineArgs [Array]
 
-type.defineProperties
+type.defineFrozenValues (responders) ->
 
-  touchHandlers:
-    lazy: -> @_createMixin()
+  touchHandlers: @_createTouchHandlers()
 
-type.defineFrozenValues
-
-  _responders: (responders) -> responders
+  _responders: responders
 
 type.defineValues
 
@@ -25,6 +22,12 @@ type.defineGetters
   _activeHandlers: -> @_activeResponder.touchHandlers
 
 type.defineMethods
+
+  _createTouchHandlers: ->
+    handlers = {}
+    for key, handler of ResponderMixin
+      handlers[key] = handler.bind this
+    return handlers
 
   _setActiveResponder: (responder, event) ->
 
@@ -63,46 +66,46 @@ type.defineMethods
       return no
     return shouldCapture
 
-  _createMixin: -> do =>
-
-    onStartShouldSetResponder: (event) =>
-      @_shouldRespond "onStartShouldSetResponder", event
-
-    onMoveShouldSetResponder: (event) =>
-      @_shouldRespond "onMoveShouldSetResponder", event
-
-    onStartShouldSetResponderCapture: (event) =>
-      @_shouldCapture "onStartShouldSetResponderCapture", event
-
-    onMoveShouldSetResponderCapture: (event) =>
-      @_shouldCapture "onMoveShouldSetResponderCapture", event
-
-    onResponderReject: (event) =>
-      @_activeHandlers.onResponderReject event
-
-    onResponderGrant: (event) =>
-      @_activeHandlers.onResponderGrant event
-
-    onResponderStart: (event) =>
-      @_activeHandlers.onResponderStart event
-
-    onResponderMove: (event) =>
-      return if @_shouldCapture "onMoveShouldSetResponderCapture", event
-      @_activeHandlers.onResponderMove event
-
-    onResponderEnd: (event) =>
-      return unless @_activeResponder
-      @_activeHandlers.onResponderEnd event
-
-    onResponderRelease: (event) =>
-      @_activeHandlers.onResponderRelease event
-      @_activeResponder = null
-
-    onResponderTerminate: (event) =>
-      @_activeHandlers.onResponderTerminate event
-      @_activeResponder = null
-
-    onResponderTerminationRequest: (event) =>
-      @_activeHandlers.onResponderTerminationRequest event
-
 module.exports = type.build()
+
+ResponderMixin =
+
+  onStartShouldSetResponder: (event) ->
+    @_shouldRespond "onStartShouldSetResponder", event
+
+  onMoveShouldSetResponder: (event) ->
+    @_shouldRespond "onMoveShouldSetResponder", event
+
+  onStartShouldSetResponderCapture: (event) ->
+    @_shouldCapture "onStartShouldSetResponderCapture", event
+
+  onMoveShouldSetResponderCapture: (event) ->
+    @_shouldCapture "onMoveShouldSetResponderCapture", event
+
+  onResponderReject: (event) ->
+    @_activeHandlers.onResponderReject event
+
+  onResponderGrant: (event) ->
+    @_activeHandlers.onResponderGrant event
+
+  onResponderStart: (event) ->
+    @_activeHandlers.onResponderStart event
+
+  onResponderMove: (event) ->
+    return if @_shouldCapture "onMoveShouldSetResponderCapture", event
+    @_activeHandlers.onResponderMove event
+
+  onResponderEnd: (event) ->
+    return unless @_activeResponder
+    @_activeHandlers.onResponderEnd event
+
+  onResponderRelease: (event) ->
+    @_activeHandlers.onResponderRelease event
+    @_activeResponder = null
+
+  onResponderTerminate: (event) ->
+    @_activeHandlers.onResponderTerminate event
+    @_activeResponder = null
+
+  onResponderTerminationRequest: (event) ->
+    @_activeHandlers.onResponderTerminationRequest event
